@@ -5,23 +5,32 @@ export const signUpSchema = z.object({
 		.string()
 		.min(2, "Full name must be at least 2 characters")
 		.max(100, "Full name must be less than 100 characters")
-		.regex(/^[a-zA-Z\s]+$/, "Full name can only contain letters and spaces"),
+		.regex(/^[a-zA-Z\s'-]+$/, "Full name can only contain letters, spaces, hyphens, and apostrophes"),
 	email: z
 		.string()
 		.min(1, "Email is required")
 		.email("Please enter a valid email address"),
 	password: z
 		.string()
-		.min(1, "Password is required")
-		.refine(
-			(val) => val.length >= 8 && /[A-Z]/.test(val) && /[a-z]/.test(val) && /[0-9]/.test(val) && /[^A-Za-z0-9]/.test(val),
-			"Password must be at least 8 characters with uppercase, lowercase, number, and special character"
-		),
-	terms: z
-		.string()
-		.refine((val) => val === "on", {
+		.min(8, "Password must be at least 8 characters")
+		.regex(/[A-Z]/, "Password must contain at least one uppercase letter")
+		.regex(/[a-z]/, "Password must contain at least one lowercase letter")
+		.regex(/[0-9]/, "Password must contain at least one number")
+		.regex(/[^A-Za-z0-9]/, "Password must contain at least one special character"),
+	terms: z.preprocess(
+		(val) => {
+			if (typeof val === "string") {
+				return val === "on";
+			}
+			if (typeof val === "boolean") {
+				return val;
+			}
+			return false;
+		},
+		z.boolean().refine((val) => val === true, {
 			message: "You must agree to the terms and privacy policy",
-		}),
+		})
+	),
 });
 
 export const signInSchema = z.object({
