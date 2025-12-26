@@ -20,11 +20,10 @@ export default function SignUpPage() {
 		setErrors({});
 
 		const formData = new FormData(e.currentTarget);
+		const formValues = Object.fromEntries(formData.entries());
 		const data = {
-			fullname: formData.get("fullname") as string,
-			email: formData.get("email") as string,
-			password: formData.get("password") as string,
-			terms: formData.get("terms") as string,
+			...formValues,
+			terms: formValues.terms === "on" ? "on" : "",
 		};
 
 		try {
@@ -39,13 +38,21 @@ export default function SignUpPage() {
 			if (error instanceof z.ZodError) {
 				const newErrors: FormErrors<SignUpFormData> = {};
 				const zodError = error as z.ZodError<SignUpFormData>;
+
 				zodError.issues.forEach((fieldError) => {
 					if (fieldError.path[0]) {
-						newErrors[fieldError.path[0] as keyof SignUpFormData] = fieldError.message;
-						toast.error(fieldError.message);
+						const fieldName = fieldError.path[0] as keyof SignUpFormData;
+						newErrors[fieldName] = fieldError.message;
 					}
 				});
 				setErrors(newErrors);
+
+				// Show specific toast for terms error, otherwise generic message
+				if (newErrors.terms) {
+					toast.error(newErrors.terms);
+				} else if (zodError.issues.length > 0) {
+					toast.error("Please fix the errors in the form");
+				}
 			}
 		} finally {
 			setIsSubmitting(false);
@@ -53,7 +60,7 @@ export default function SignUpPage() {
 	};
 
 	const handleGoogleSignup = () => {
-		console.log("Google signup clicked");
+		toast.success("Google Sign-Up coming soon!");
 	};
 
 	return (
@@ -107,6 +114,7 @@ export default function SignUpPage() {
 									placeholder="Full name"
 									aria-label="Full name"
 									autoComplete="name"
+									error={errors.fullname}
 								/>
 							</motion.div>
 							<motion.div variants={{ hidden: { opacity: 0, y: 10 }, visible: { opacity: 1, y: 0 } }}>
@@ -117,6 +125,7 @@ export default function SignUpPage() {
 									placeholder="Work email"
 									aria-label="Work email"
 									autoComplete="email"
+									error={errors.email}
 								/>
 							</motion.div>
 							<motion.div variants={{ hidden: { opacity: 0, y: 10 }, visible: { opacity: 1, y: 0 } }}>
@@ -127,6 +136,7 @@ export default function SignUpPage() {
 									placeholder="Create password"
 									aria-label="Create password"
 									autoComplete="new-password"
+									error={errors.password}
 								/>
 							</motion.div>
 						</motion.div>
@@ -193,6 +203,7 @@ export default function SignUpPage() {
 						>
 							<Button
 								variant="outline"
+								type="button"
 								onClick={handleGoogleSignup}
 								showArrow={false}
 								className="w-full border-white/10 hover:bg-white/5 hover:border-white/20"
