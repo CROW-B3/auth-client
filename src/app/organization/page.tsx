@@ -1,19 +1,17 @@
 "use client";
 
 import { useState } from "react";
-import { useRouter } from "next/navigation";
-import { AnimatedBackground, Button, Checkbox, Divider, Input, Navbar, NavLink, PageHeader } from "@b3-crow/ui-kit";
+import { AnimatedBackground, Button, Divider, Input, Navbar, NavLink, PageHeader, Footer } from "@b3-crow/ui-kit";
 import { LuArrowRight, LuLoader } from "react-icons/lu";
 import { GrGoogle } from "react-icons/gr";
 import { z } from "zod";
 import { motion } from "framer-motion";
 import toast from "react-hot-toast";
-import { signUpSchema, type SignUpFormData } from "@/lib/validations";
+import { createOrganizationSchema, type CreateOrganizationFormData } from "@/lib/validations";
 import { type FormErrors } from "@/types";
 
-export default function SignUpPage() {
-	const router = useRouter();
-	const [errors, setErrors] = useState<FormErrors<SignUpFormData>>({});
+export default function CreateOrganizationPage() {
+	const [errors, setErrors] = useState<FormErrors<CreateOrganizationFormData>>({});
 	const [isSubmitting, setIsSubmitting] = useState(false);
 
 	const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
@@ -23,37 +21,29 @@ export default function SignUpPage() {
 
 		const formData = new FormData(e.currentTarget);
 		const formValues = Object.fromEntries(formData.entries());
-		const data = {
-			...formValues,
-			terms: formValues.terms === "on" ? "on" : "",
-		};
 
 		try {
-			const validatedData = signUpSchema.parse(data);
+			const validatedData = createOrganizationSchema.parse(formValues);
 			console.log("Validated data:", validatedData);
 
 			await new Promise((resolve) => setTimeout(resolve, 2000));
 
-			toast.success("Account created successfully!");
-			router.push("/organization");
+			toast.success("Organization created successfully!");
 
 		} catch (error) {
 			if (error instanceof z.ZodError) {
-				const newErrors: FormErrors<SignUpFormData> = {};
-				const zodError = error as z.ZodError<SignUpFormData>;
+				const newErrors: FormErrors<CreateOrganizationFormData> = {};
+				const zodError = error as z.ZodError<CreateOrganizationFormData>;
 
 				zodError.issues.forEach((fieldError) => {
 					if (fieldError.path[0]) {
-						const fieldName = fieldError.path[0] as keyof SignUpFormData;
+						const fieldName = fieldError.path[0] as keyof CreateOrganizationFormData;
 						newErrors[fieldName] = fieldError.message;
 					}
 				});
 				setErrors(newErrors);
 
-				// Show specific toast for terms error, otherwise generic message
-				if (newErrors.terms) {
-					toast.error(newErrors.terms);
-				} else if (zodError.issues.length > 0) {
+				if (zodError.issues.length > 0) {
 					toast.error("Please fix the errors in the form");
 				}
 			}
@@ -74,16 +64,16 @@ export default function SignUpPage() {
 				logo={{ text: "CROW", src: "/favicon.webp", alt: "CROW Logo" }}
 				rightContent={
 				<span className="text-gray-500 flex items-center gap-2">
-					Already have an account? <NavLink href="/login">Log in</NavLink>
+					Have an account? <NavLink href="/login">Sign in</NavLink>
 				</span>}
 			/>
 
-			<main className="flex-grow flex items-center justify-center relative z-10 w-full px-4 py-8">
-				<div className="w-full max-w-[380px] flex flex-col items-center text-center">
+			<main className="flex-grow flex items-center justify-center relative z-10 w-full px-4 py-4">
+				<div className="w-full max-w-[400px] flex flex-col items-center text-center">
 					<PageHeader
 						label="Sign Up"
-						title="Create your CROW account."
-						description="Start unifying Web, CCTV, and Social signals."
+						title="Create your organization"
+						description="Start unifying Web, CCTV, and Social signals into one interaction model."
 					/>
 
 					<motion.form
@@ -111,10 +101,23 @@ export default function SignUpPage() {
 						>
 							<motion.div variants={{ hidden: { opacity: 0, y: 10 }, visible: { opacity: 1, y: 0 } }}>
 								<Input
+									inputSize="sm"
+									id="organizationName"
+									name="organizationName"
+									type="text"
+									placeholder="Organization name"
+									aria-label="Organization name"
+									autoComplete="organization"
+									error={errors.organizationName}
+								/>
+							</motion.div>
+							<motion.div variants={{ hidden: { opacity: 0, y: 10 }, visible: { opacity: 1, y: 0 } }}>
+								<Input
+									inputSize="sm"
 									id="fullname"
 									name="fullname"
 									type="text"
-									placeholder="Full name"
+									placeholder="Your name"
 									aria-label="Full name"
 									autoComplete="name"
 									error={errors.fullname}
@@ -122,10 +125,11 @@ export default function SignUpPage() {
 							</motion.div>
 							<motion.div variants={{ hidden: { opacity: 0, y: 10 }, visible: { opacity: 1, y: 0 } }}>
 								<Input
+									inputSize="sm"
 									id="email"
 									name="email"
 									type="email"
-									placeholder="Email"
+									placeholder="name@company.com"
 									aria-label="Email"
 									autoComplete="email"
 									error={errors.email}
@@ -133,6 +137,7 @@ export default function SignUpPage() {
 							</motion.div>
 							<motion.div variants={{ hidden: { opacity: 0, y: 10 }, visible: { opacity: 1, y: 0 } }}>
 								<Input
+									inputSize="sm"
 									id="password"
 									name="password"
 									type="password"
@@ -142,59 +147,40 @@ export default function SignUpPage() {
 									error={errors.password}
 								/>
 							</motion.div>
-						</motion.div>
-
-						<motion.div
-							className="px-1"
-							initial={{ opacity: 0, y: 10 }}
-							animate={{ opacity: 1, y: 0 }}
-							transition={{ duration: 0.5, delay: 0.6 }}
-						>
-							<Checkbox
-								id="terms"
-								name="terms"
-								label={
-									<>
-										I agree to the{" "}
-										<a
-											href="#"
-											className="text-gray-400 hover:text-white transition-colors underline decoration-gray-700 underline-offset-2"
-										>
-											Terms
-										</a>{" "}
-										and{" "}
-										<a
-											href="#"
-											className="text-gray-400 hover:text-white transition-colors underline decoration-gray-700 underline-offset-2"
-										>
-											Privacy Policy
-										</a>
-										.
-									</>
-								}
-							/>
+							<motion.div variants={{ hidden: { opacity: 0, y: 10 }, visible: { opacity: 1, y: 0 } }}>
+								<Input
+									inputSize="sm"
+									id="confirmPassword"
+									name="confirmPassword"
+									type="password"
+									placeholder="Confirm password"
+									aria-label="Confirm password"
+									autoComplete="new-password"
+									error={errors.confirmPassword}
+								/>
+							</motion.div>
 						</motion.div>
 
 						<motion.div
 							initial={{ opacity: 0, y: 10 }}
 							animate={{ opacity: 1, y: 0 }}
-							transition={{ duration: 0.5, delay: 0.7 }}
+							transition={{ duration: 0.5, delay: 0.8 }}
 						>
 							<Button
 								variant="solid"
 								type="submit"
-								className="w-full bg-violet-600 hover:bg-violet-700 shadow-glow hover:shadow-glow-hover disabled:opacity-50 disabled:cursor-not-allowed"
+								className="w-full bg-violet-600 hover:bg-violet-700 shadow-glow hover:shadow-glow-hover disabled:opacity-50 disabled:cursor-not-allowed mt-2"
 								arrowIcon={isSubmitting ? <LuLoader className="animate-spin" /> : <LuArrowRight />}
 								disabled={isSubmitting}
 							>
-								{isSubmitting ? "Setting up" : "Continue"}
+								{isSubmitting ? "Creating" : "Create organization"}
 							</Button>
 						</motion.div>
 
 						<motion.div
 							initial={{ opacity: 0 }}
 							animate={{ opacity: 1 }}
-							transition={{ duration: 0.5, delay: 0.8 }}
+							transition={{ duration: 0.5, delay: 0.9 }}
 						>
 							<Divider text="Or" />
 						</motion.div>
@@ -202,7 +188,7 @@ export default function SignUpPage() {
 						<motion.div
 							initial={{ opacity: 0, y: 10 }}
 							animate={{ opacity: 1, y: 0 }}
-							transition={{ duration: 0.5, delay: 0.9 }}
+							transition={{ duration: 0.5, delay: 1.0 }}
 						>
 							<Button
 								variant="outline"
@@ -212,7 +198,7 @@ export default function SignUpPage() {
 								className="w-full border-white/10 hover:bg-white/5 hover:border-white/20"
 							>
 								<div className="flex items-center gap-2">
-									<GrGoogle className="w-3 h-3" />
+									<GrGoogle className="w-4 h-4" />
 									Continue with Google
 								</div>
 							</Button>
@@ -221,7 +207,16 @@ export default function SignUpPage() {
 				</div>
 			</main>
 
-			<div className="w-full py-4 text-center z-10 relative"></div>
+			<Footer
+				invitePrefix="Have an invite?"
+				inviteText="Accept invitation"
+				inviteHref="/accept-invite"
+				termsPrefix="By creating an account, you agree to"
+				termsLinks={[
+				{ text: "Terms", href: "/terms" },
+				{ text: "Privacy Policy", href: "/privacy" }
+				]}
+ 			 />
 		</div>
 	);
 }
