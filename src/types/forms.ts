@@ -1,0 +1,1 @@
+export type FormErrors<T extends Record<string, any>> = Partial<Record<keyof T, string>>;
