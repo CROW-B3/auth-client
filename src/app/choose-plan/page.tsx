@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useRouter } from "next/navigation";
 import {
 	AnimatedBackground,
 	Navbar,
@@ -18,6 +19,7 @@ import { PLANS, type PlanType, type BillingPeriod } from "@/config/plans";
 import { planSelectionSchema } from "@/lib/validations/plan";
 
 export default function ChoosePlanPage() {
+	const router = useRouter();
 	const [selectedPlans, setSelectedPlans] = useState<PlanType[]>([]);
 	const [billing, setBilling] = useState<BillingPeriod>("annual");
 	const [autoScale, setAutoScale] = useState(false);
@@ -54,7 +56,13 @@ export default function ChoosePlanPage() {
 
 		await new Promise((resolve) => setTimeout(resolve, 1500));
 
-		setIsLoading(false);
+		const params = new URLSearchParams({
+			plans: selectedPlans.join(','),
+			billing: billing,
+			autoScale: autoScale.toString(),
+		});
+
+		router.push(`/checkout?${params.toString()}`);
 	};
 
 	const calculateTotal = () => {
