@@ -1,26 +1,72 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { AnimatedBackground, Button, Input, Navbar, NavLink, PageHeader, InvitationDetailsCard } from "@b3-crow/ui-kit";
 import { LuArrowRight, LuLoader, LuEye, LuEyeOff } from "react-icons/lu";
 import { z } from "zod";
 import { motion } from "framer-motion";
 import toast from "react-hot-toast";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { acceptInviteSchema, type AcceptInviteFormData } from "@/lib/validations";
 import { type FormErrors } from "@/types";
 
+interface InvitationDetails {
+	organization: string;
+	role: string;
+	email: string;
+}
+
 export default function AcceptInvitePage() {
 	const router = useRouter();
+	const searchParams = useSearchParams();
 	const [errors, setErrors] = useState<FormErrors<AcceptInviteFormData>>({});
 	const [isSubmitting, setIsSubmitting] = useState(false);
 	const [showPassword, setShowPassword] = useState(false);
-
-	const invitationDetails = {
+	const [isLoadingInvite, setIsLoadingInvite] = useState(true);
+	const [invitationDetails, setInvitationDetails] = useState<InvitationDetails>({
 		organization: "Global Retail Ops",
 		role: "Analyst",
 		email: "name@company.com",
-	};
+	});
+
+	// Fetch invitation details from URL token
+	useEffect(() => {
+		const token = searchParams.get("token");
+
+		if (!token) {
+			// No token provided, use default mock data for development
+			setIsLoadingInvite(false);
+			return;
+		}
+
+		const fetchInvitationDetails = async () => {
+			try {
+				const response = await fetch(`/api/invitations/${encodeURIComponent(token)}`);
+
+				if (!response.ok) {
+					// Only show toast for server errors (500+), not for 404 (API not implemented)
+					if (response.status >= 500) {
+						toast.error("Failed to load invitation details");
+					}
+					throw new Error("Failed to fetch invitation details");
+				}
+
+				const data = await response.json() as { organization: string; role: string; email: string };
+				setInvitationDetails({
+					organization: data.organization,
+					role: data.role,
+					email: data.email,
+				});
+			} catch (error) {
+				console.error("Error fetching invitation:", error);
+				// Network errors or other issues - silently fail in development
+			} finally {
+				setIsLoadingInvite(false);
+			}
+		};
+
+		void fetchInvitationDetails();
+	}, [searchParams]);
 
 	const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
 		e.preventDefault();
@@ -31,10 +77,29 @@ export default function AcceptInvitePage() {
 		const formValues = Object.fromEntries(formData.entries());
 
 		try {
+			// Validate form data
 			const validatedData = acceptInviteSchema.parse(formValues);
-			console.log("Validated data:", validatedData);
 
-			await new Promise((resolve) => setTimeout(resolve, 2000));
+			// Get token from URL
+			const token = searchParams.get("token");
+
+			// Make API call to accept invitation
+			const response = await fetch("/api/invitations/accept", {
+				method: "POST",
+				headers: {
+					"Content-Type": "application/json",
+				},
+				body: JSON.stringify({
+					token,
+					fullname: validatedData.fullname,
+					password: validatedData.password,
+				}),
+			});
+
+			if (!response.ok) {
+				const errorData = await response.json().catch(() => ({ message: "Failed to accept invitation" })) as { message?: string };
+				throw new Error(errorData.message || "Failed to accept invitation");
+			}
 
 			toast.success("Welcome to the team! Redirecting...");
 
@@ -44,9 +109,8 @@ export default function AcceptInvitePage() {
 		} catch (error) {
 			if (error instanceof z.ZodError) {
 				const newErrors: FormErrors<AcceptInviteFormData> = {};
-				const zodError = error as z.ZodError<AcceptInviteFormData>;
 
-				zodError.issues.forEach((fieldError) => {
+				error.issues.forEach((fieldError) => {
 					if (fieldError.path[0]) {
 						const fieldName = fieldError.path[0] as keyof AcceptInviteFormData;
 						newErrors[fieldName] = fieldError.message;
@@ -54,9 +118,14 @@ export default function AcceptInvitePage() {
 				});
 				setErrors(newErrors);
 
-				if (zodError.issues.length > 0) {
+				if (error.issues.length > 0) {
 					toast.error("Please fix the errors in the form");
 				}
+			} else {
+				// Handle API errors or other unexpected errors
+				console.error("Accept invite error:", error);
+				const errorMessage = error instanceof Error ? error.message : "An unexpected error occurred. Please try again.";
+				toast.error(errorMessage);
 			}
 		} finally {
 			setIsSubmitting(false);
@@ -153,6 +222,7 @@ export default function AcceptInvitePage() {
 										type="button"
 										onClick={() => setShowPassword(!showPassword)}
 										className="absolute inset-y-0 right-0 flex items-center px-4 text-gray-500 hover:text-violet-400 focus:outline-none transition-colors"
+										aria-label={showPassword ? "Hide password" : "Show password"}
 									>
 										{showPassword ? <LuEyeOff className="w-[18px] h-[18px]" /> : <LuEye className="w-[18px] h-[18px]" />}
 									</button>

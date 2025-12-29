@@ -1,14 +1,15 @@
 "use client";
 
-import { useState } from "react";
-import { AnimatedBackground, Button, Navbar, NavLink, PageHeader, Select, EmailTagInput, PermissionToggle, PendingInviteCard  } from "@b3-crow/ui-kit";
+import { useState, useEffect } from "react";
+import { AnimatedBackground, Button, Navbar, PageHeader, Select, EmailTagInput, PermissionToggle, PendingInviteCard  } from "@b3-crow/ui-kit";
 import { LuArrowRight, LuLoader, LuMessageCircle, LuNetwork, LuTrendingUp, LuUsers, LuKey } from "react-icons/lu";
 import { motion } from "framer-motion";
 import toast from "react-hot-toast";
-import { type PendingInvite } from "@/lib/validations";
+import { z } from "zod";
+import { inviteTeamSchema, type PendingInvite } from "@/lib/validations";
 
 export default function InviteTeamPage() {
-	const [emails, setEmails] = useState<string[]>(["sarah@partner.com"]);
+	const [emails, setEmails] = useState<string[]>([]);
 	const [isSubmitting, setIsSubmitting] = useState(false);
 	const [chatEnabled, setChatEnabled] = useState(true);
 	const [chatComponents, setChatComponents] = useState<string[]>(["web", "cctv"]);
@@ -19,99 +20,36 @@ export default function InviteTeamPage() {
 	const [apiKeysEnabled, setApiKeysEnabled] = useState(true);
 	const [apiKeyInteractions, setApiKeyInteractions] = useState(true);
 	const [apiKeyPatterns, setApiKeyPatterns] = useState(false);
-	const [pendingInvites, setPendingInvites] = useState<PendingInvite[]>([
-		{
-			id: "1",
-			email: "alex@company.com",
-			initials: "AC",
-			status: "pending",
-			permissions: {
-				chat: { components: ["Web", "CCTV"], lookbackWindow: "90d" },
-				interactions: true,
-				patterns: true,
-				apiKeys: { scopes: ["Interactions"] },
-			},
-			sentAt: new Date(),
-		},
-		{
-			id: "2",
-			email: "maria@retail.co",
-			initials: "MR",
-			status: "pending",
-			permissions: {
-				patterns: true,
-			},
-			sentAt: new Date(),
-		},
-		{
-			id: "3",
-			email: "james@ops.net",
-			initials: "JO",
-			status: "pending",
-			permissions: {
-				chat: { components: ["Social"], lookbackWindow: "1y" },
-				interactions: true,
-				patterns: true,
-			},
-			sentAt: new Date(),
-		},
-		{
-			id: "4",
-			email: "karl@logistics.io",
-			initials: "KL",
-			status: "pending",
-			permissions: {
-				teamManagement: true,
-				chat: { components: ["Web", "CCTV", "Social"], lookbackWindow: "1y" },
-			},
-			sentAt: new Date(),
-		},
-		{
-			id: "5",
-			email: "sarah.chen@tech.io",
-			initials: "SC",
-			status: "pending",
-			permissions: {
-				chat: { components: ["Web"], lookbackWindow: "30d" },
-				interactions: true,
-			},
-			sentAt: new Date(),
-		},
-		{
-			id: "6",
-			email: "david.kim@startup.com",
-			initials: "DK",
-			status: "pending",
-			permissions: {
-				chat: { components: ["Web", "CCTV"], lookbackWindow: "1y" },
-				patterns: true,
-				apiKeys: { scopes: ["Interactions", "Patterns"] },
-			},
-			sentAt: new Date(),
-		},
-		{
-			id: "7",
-			email: "emily.park@agency.net",
-			initials: "EP",
-			status: "pending",
-			permissions: {
-				interactions: true,
-				patterns: true,
-			},
-			sentAt: new Date(),
-		},
-		{
-			id: "8",
-			email: "michael.wong@enterprise.org",
-			initials: "MW",
-			status: "pending",
-			permissions: {
-				chat: { components: ["Web", "Social"], lookbackWindow: "7d" },
-				teamManagement: true,
-			},
-			sentAt: new Date(),
-		},
-	]);
+	const [pendingInvites, setPendingInvites] = useState<PendingInvite[]>([]);
+	const [isLoadingInvites, setIsLoadingInvites] = useState(true);
+
+	// Fetch pending invitations from API
+	useEffect(() => {
+		const fetchPendingInvites = async () => {
+			try {
+				const response = await fetch("/api/invitations/pending");
+
+				if (!response.ok) {
+					// Only show toast for server errors (500+), not for 404 (API not implemented)
+					if (response.status >= 500) {
+						toast.error("Failed to load pending invitations");
+					}
+					throw new Error("Failed to fetch pending invitations");
+				}
+
+				const data = await response.json() as { invites?: PendingInvite[] };
+				setPendingInvites(data.invites || []);
+			} catch (error) {
+				console.error("Error fetching pending invites:", error);
+				// Network errors or other issues - silently fail in development
+				setPendingInvites([]);
+			} finally {
+				setIsLoadingInvites(false);
+			}
+		};
+
+		void fetchPendingInvites();
+	}, []);
 
 	const handleComponentToggle = (component: string) => {
 		if (chatComponents.includes(component)) {
@@ -126,71 +64,84 @@ export default function InviteTeamPage() {
 		setIsSubmitting(true);
 
 		try {
-			if (emails.length === 0) {
-				toast.error("Please add at least one email address");
-				return;
-			}
+			// Build form data object matching schema structure
+			const permissions: Record<string, any> = {};
 
-			if (chatEnabled && chatComponents.length === 0) {
-				toast.error("Please select at least one component for Chat access");
-				return;
-			}
-
-			await new Promise((resolve) => setTimeout(resolve, 2000));
-
-			const newInvites: PendingInvite[] = emails.map((email, index) => {
-				const emailName = email.split("@")[0];
-				const initials = emailName
-					.split(/[._-]/)
-					.map((part) => part[0]?.toUpperCase() || "")
-					.slice(0, 2)
-					.join("");
-
-				const permissions: PendingInvite["permissions"] = {};
-
-				if (chatEnabled && chatComponents.length > 0) {
-					permissions.chat = {
-						components: chatComponents.map((c) => c.charAt(0).toUpperCase() + c.slice(1)),
-						lookbackWindow: lookbackWindow.replace("days", "d").replace("1year", "1y").replace("all", "all"),
-					};
-				}
-
-				if (interactionsEnabled) {
-					permissions.interactions = true;
-				}
-
-				if (patternsEnabled) {
-					permissions.patterns = true;
-				}
-
-				if (teamManagementEnabled) {
-					permissions.teamManagement = true;
-				}
-
-				if (apiKeysEnabled && (apiKeyInteractions || apiKeyPatterns)) {
-					const scopes: string[] = [];
-					if (apiKeyInteractions) scopes.push("Interactions");
-					if (apiKeyPatterns) scopes.push("Patterns");
-					permissions.apiKeys = { scopes };
-				}
-
-				return {
-					id: `${Date.now()}-${index}`,
-					email,
-					initials: initials || "??",
-					status: "pending" as const,
-					permissions,
-					sentAt: new Date(),
+			if (chatEnabled) {
+				permissions.chat = {
+					enabled: chatEnabled,
+					components: chatComponents as Array<"web" | "cctv" | "social">,
+					lookbackWindow: lookbackWindow as "7days" | "30days" | "90days" | "1year" | "all",
 				};
+			}
+
+			if (interactionsEnabled !== undefined) {
+				permissions.interactions = interactionsEnabled;
+			}
+
+			if (patternsEnabled !== undefined) {
+				permissions.patterns = patternsEnabled;
+			}
+
+			if (teamManagementEnabled !== undefined) {
+				permissions.teamManagement = teamManagementEnabled;
+			}
+
+			if (apiKeysEnabled) {
+				permissions.apiKeys = {
+					enabled: apiKeysEnabled,
+					scopes: {
+						interactions: apiKeyInteractions,
+						patterns: apiKeyPatterns,
+					},
+				};
+			}
+
+			const formData = {
+				emails,
+				permissions,
+			};
+
+			// Validate using schema
+			const validatedData = inviteTeamSchema.parse(formData);
+
+			// Make API call to send invitations
+			const response = await fetch("/api/invitations/send", {
+				method: "POST",
+				headers: {
+					"Content-Type": "application/json",
+				},
+				body: JSON.stringify(validatedData),
 			});
 
-			setPendingInvites([...newInvites, ...pendingInvites]);
+			if (!response.ok) {
+				const errorData = await response.json().catch(() => ({ message: "Failed to send invitations" })) as { message?: string };
+				throw new Error(errorData.message || "Failed to send invitations");
+			}
+
+			const result = await response.json() as { invites?: PendingInvite[] };
+
+			// Add new invites to the list (append to the end for chronological order)
+			if (result.invites) {
+				setPendingInvites([...pendingInvites, ...result.invites]);
+			}
 
 			toast.success(`Invitations sent to ${emails.length} ${emails.length === 1 ? "person" : "people"}!`);
 
+			// Reset form
 			setEmails([]);
 		} catch (error) {
-			toast.error("Failed to send invitations");
+			console.error("Error sending invitations:", error);
+
+			if (error instanceof z.ZodError) {
+				// Zod validation errors
+				const firstError = error.issues[0];
+				toast.error(firstError?.message || "Please fix validation errors");
+			} else {
+				// API or other errors
+				const errorMessage = error instanceof Error ? error.message : "Failed to send invitations";
+				toast.error(errorMessage);
+			}
 		} finally {
 			setIsSubmitting(false);
 		}
@@ -200,13 +151,39 @@ export default function InviteTeamPage() {
 		toast.success("You can invite team members later!");
 	};
 
-	const handleResend = (id: string) => {
-		toast.success("Invitation resent!");
+	const handleResend = async (id: string) => {
+		try {
+			const response = await fetch(`/api/invitations/${id}/resend`, {
+				method: "POST",
+			});
+
+			if (!response.ok) {
+				throw new Error("Failed to resend invitation");
+			}
+
+			toast.success("Invitation resent!");
+		} catch (error) {
+			console.error("Error resending invitation:", error);
+			toast.error("Failed to resend invitation");
+		}
 	};
 
-	const handleRevoke = (id: string) => {
-		setPendingInvites(pendingInvites.filter((invite) => invite.id !== id));
-		toast.success("Invitation revoked");
+	const handleRevoke = async (id: string) => {
+		try {
+			const response = await fetch(`/api/invitations/${id}`, {
+				method: "DELETE",
+			});
+
+			if (!response.ok) {
+				throw new Error("Failed to revoke invitation");
+			}
+
+			setPendingInvites(pendingInvites.filter((invite) => invite.id !== id));
+			toast.success("Invitation revoked");
+		} catch (error) {
+			console.error("Error revoking invitation:", error);
+			toast.error("Failed to revoke invitation");
+		}
 	};
 
 	const getPermissionSummary = () => {
@@ -313,7 +290,8 @@ export default function InviteTeamPage() {
 																	type="checkbox"
 																	checked={chatComponents.includes(component)}
 																	onChange={() => handleComponentToggle(component)}
-																	className="rounded-full text-violet-500 border-none bg-transparent focus:ring-0 w-3 h-3"
+																	className="rounded-full text-violet-500 border-none bg-transparent focus:ring-2 focus:ring-violet-500 focus:ring-offset-2 focus:ring-offset-gray-900 w-3 h-3"
+																	aria-label={`Enable ${component} component`}
 																/>
 																<span
 																	className={`text-[10px] font-medium ${
@@ -397,8 +375,9 @@ export default function InviteTeamPage() {
 																checked={apiKeyInteractions}
 																onChange={(e) => setApiKeyInteractions(e.target.checked)}
 																className="sr-only peer"
+																aria-label="Enable API key access for Interactions"
 															/>
-															<div className="w-9 h-5 bg-gray-700 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-violet-600"></div>
+															<div className="w-9 h-5 bg-gray-700 peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-violet-500 peer-focus:ring-offset-2 peer-focus:ring-offset-gray-900 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-violet-600"></div>
 														</label>
 														<span className="text-[10px] text-gray-300">Interactions</span>
 													</div>
@@ -409,8 +388,9 @@ export default function InviteTeamPage() {
 																checked={apiKeyPatterns}
 																onChange={(e) => setApiKeyPatterns(e.target.checked)}
 																className="sr-only peer"
+																aria-label="Enable API key access for Patterns"
 															/>
-															<div className="w-9 h-5 bg-gray-700 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-violet-600"></div>
+															<div className="w-9 h-5 bg-gray-700 peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-violet-500 peer-focus:ring-offset-2 peer-focus:ring-offset-gray-900 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-violet-600"></div>
 														</label>
 														<span className="text-[10px] text-gray-300">Patterns</span>
 													</div>
