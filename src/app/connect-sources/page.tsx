@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { AnimatedBackground, Navbar, PageHeader, Button, ConnectionOption, ConnectionOptionStatus } from "@b3-crow/ui-kit";
 import { LuGlobe, LuVideo, LuArrowRight, LuSkipForward } from "react-icons/lu";
@@ -16,9 +16,11 @@ interface ConnectionSource {
 	status: ConnectionOptionStatus;
 }
 
+const STORAGE_KEY = "crow_connection_status";
+
 export default function ConnectSourcesPage() {
 	const router = useRouter();
-	const [sources] = useState<ConnectionSource[]>([
+	const [sources, setSources] = useState<ConnectionSource[]>([
 		{
 			id: "web",
 			title: "Connect Web",
@@ -41,6 +43,24 @@ export default function ConnectSourcesPage() {
 			status: "not_started",
 		},
 	]);
+
+	// Load connection status from localStorage on mount
+	useEffect(() => {
+		const savedStatus = localStorage.getItem(STORAGE_KEY);
+		if (savedStatus) {
+			try {
+				const statusMap = JSON.parse(savedStatus) as Record<string, ConnectionOptionStatus>;
+				setSources((prevSources) =>
+					prevSources.map((source) => ({
+						...source,
+						status: statusMap[source.id] || source.status,
+					}))
+				);
+			} catch (error) {
+				console.error("Failed to parse connection status:", error);
+			}
+		}
+	}, []);
 
 	const connectedCount = useMemo(
 		() => sources.filter((s) => s.status === "connected").length,
