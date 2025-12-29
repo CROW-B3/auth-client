@@ -3,23 +3,45 @@ import { z } from "zod";
 export const inviteTeamSchema = z.object({
 	emails: z
 		.array(z.string().email("Invalid email address"))
-		.min(1, "At least one email is required"),
+		.min(1, "At least one email is required")
+		.refine(
+			(emails) => new Set(emails).size === emails.length,
+			{ message: "Emails must be unique" }
+		),
 	permissions: z.object({
-		chat: z.object({
-			enabled: z.boolean(),
-			components: z.array(z.enum(["web", "cctv", "social"])).min(1, "At least one component required when chat is enabled"),
-			lookbackWindow: z.enum(["7days", "30days", "90days", "1year", "all"]),
-		}),
-		interactions: z.boolean(),
-		patterns: z.boolean(),
-		teamManagement: z.boolean(),
-		apiKeys: z.object({
-			enabled: z.boolean(),
-			scopes: z.object({
-				interactions: z.boolean(),
-				patterns: z.boolean(),
-			}),
-		}),
+		chat: z
+			.object({
+				enabled: z.boolean(),
+				components: z.array(z.enum(["web", "cctv", "social"])),
+				lookbackWindow: z.enum(["7days", "30days", "90days", "1year", "all"]),
+			})
+			.refine(
+				(data) => !data.enabled || data.components.length > 0,
+				{
+					message: "At least one component required when chat is enabled",
+					path: ["components"],
+				}
+			)
+			.optional(),
+		interactions: z.boolean().optional(),
+		patterns: z.boolean().optional(),
+		teamManagement: z.boolean().optional(),
+		apiKeys: z
+			.object({
+				enabled: z.boolean(),
+				scopes: z.object({
+					interactions: z.boolean(),
+					patterns: z.boolean(),
+				}),
+			})
+			.refine(
+				(data) => !data.enabled || data.scopes.interactions || data.scopes.patterns,
+				{
+					message: "At least one scope required when API keys are enabled",
+					path: ["scopes"],
+				}
+			)
+			.optional(),
 	}),
 });
 
