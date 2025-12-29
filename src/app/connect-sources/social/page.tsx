@@ -218,7 +218,7 @@ export default function ConnectSocialPage() {
 						<button
 							type="button"
 							className="text-xs text-gray-500 hover:text-violet-400 transition-colors underline decoration-gray-700 hover:decoration-violet-500/50 underline-offset-2"
-							onClick={() => toast.info("Documentation coming soon!")}
+							onClick={() => toast("Documentation coming soon!")}
 						>
 							How social signals are used
 						</button>
