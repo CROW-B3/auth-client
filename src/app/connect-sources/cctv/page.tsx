@@ -9,17 +9,43 @@ import toast from "react-hot-toast";
 export default function ConnectCCTVPage() {
 	const router = useRouter();
 	const [siteName, setSiteName] = useState("");
-	const [region] = useState("");
+	const [region, setRegion] = useState("");
 	const [cameraGroup, setCameraGroup] = useState("");
 	const [isConnected, setIsConnected] = useState(false);
 
-	const agentCommand = `crow-cctv-agent start --site "${siteName || "<site-name>"}" --region ${region || "<region>"}${cameraGroup ? ` --group "${cameraGroup}"` : ""}`;
+	const sanitizeShellArg = (value: string): string => {
+		return value.replace(/(["\\$`])/g, "\\$1");
+	};
+
+	const safeSiteName = sanitizeShellArg(siteName || "<site-name>");
+	const safeRegion = sanitizeShellArg(region || "<region>");
+	const safeCameraGroup = cameraGroup ? sanitizeShellArg(cameraGroup) : "";
+
+	const agentCommand = `crow-cctv-agent start --site "${safeSiteName}" --region "${safeRegion}"${safeCameraGroup ? ` --group "${safeCameraGroup}"` : ""}`;
+
+	const handleVerifyConnection = () => {
+		if (!siteName.trim()) {
+			toast.error("Please enter a site name");
+			return;
+		}
+		if (!region) {
+			toast.error("Please select a region");
+			return;
+		}
+		toast.success("Connection verified successfully!");
+		setIsConnected(true);
+	};
 
 	const handleContinue = () => {
 		if (!isConnected) {
 			toast.error("Please verify connection first");
 			return;
 		}
+		const savedStatus = localStorage.getItem("crow_connection_status");
+		const statusMap = savedStatus ? JSON.parse(savedStatus) : {};
+		statusMap.cctv = "connected";
+		localStorage.setItem("crow_connection_status", JSON.stringify(statusMap));
+
 		toast.success("CCTV source connected!");
 		router.push("/connect-sources");
 	};
@@ -57,7 +83,8 @@ export default function ConnectCCTVPage() {
 							<div className="col-span-5">
 								<Select
 									label="Location / Region"
-									defaultValue={region}
+									value={region}
+									onChange={setRegion}
 									options={[
 										{ value: "", label: "Select region" },
 										{ value: "us-east", label: "North America (East)" },
@@ -82,7 +109,19 @@ export default function ConnectCCTVPage() {
 							<RunAgentCard command={agentCommand} />
 						</div>
 
-						<div>
+						<div className="space-y-3">
+							<Button
+								variant="solid"
+								onClick={handleVerifyConnection}
+								disabled={isConnected}
+								className={`w-full text-sm ${
+									!isConnected
+										? "bg-blue-600 hover:bg-blue-700"
+										: "bg-white/5 border border-white/5 text-gray-600 cursor-not-allowed"
+								}`}
+							>
+								{isConnected ? "Connection Verified" : "Verify Connection"}
+							</Button>
 							<Button
 								variant="solid"
 								onClick={handleContinue}

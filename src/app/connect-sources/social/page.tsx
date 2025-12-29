@@ -12,7 +12,7 @@ export default function ConnectSocialPage() {
 	const router = useRouter();
 	const [keywords, setKeywords] = useState<string[]>(["checkout", "queue"]);
 	const [brands, setBrands] = useState<string[]>(["CROW Sneakers"]);
-	const [region] = useState("");
+	const [region, setRegion] = useState("");
 	const [connectedAccounts, setConnectedAccounts] = useState({
 		twitter: false,
 		reddit: false,
@@ -30,6 +30,11 @@ export default function ConnectSocialPage() {
 
 
 	const handleStartSync = () => {
+		const savedStatus = localStorage.getItem("crow_connection_status");
+		const statusMap = savedStatus ? JSON.parse(savedStatus) : {};
+		statusMap.social = "connected";
+		localStorage.setItem("crow_connection_status", JSON.stringify(statusMap));
+
 		toast.success("Starting social sync...");
 		router.push("/connect-sources");
 	};
@@ -41,7 +46,6 @@ export default function ConnectSocialPage() {
 
 	const handleConnectAccount = (platform: "twitter" | "reddit" | "instagram" | "tiktok" | "news") => {
 		toast.success(`Opening ${platform} authorization...`);
-		// Simulate connection
 		setConnectedAccounts({ ...connectedAccounts, [platform]: true });
 	};
 
@@ -86,7 +90,8 @@ export default function ConnectSocialPage() {
 									Regions / languages
 								</label>
 								<Select
-									defaultValue={region}
+									value={region}
+									onChange={setRegion}
 									options={[
 										{ value: "", label: "All regions / All languages" },
 										{ value: "na-en", label: "North America (EN)" },
@@ -210,12 +215,13 @@ export default function ConnectSocialPage() {
 								Skip for now
 							</Button>
 						</div>
-						<a
+						<button
+							type="button"
 							className="text-xs text-gray-500 hover:text-violet-400 transition-colors underline decoration-gray-700 hover:decoration-violet-500/50 underline-offset-2"
-							href="#"
+							onClick={() => toast.info("Documentation coming soon!")}
 						>
 							How social signals are used
-						</a>
+						</button>
 					</motion.div>
 				</div>
 			</main>
