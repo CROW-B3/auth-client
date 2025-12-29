@@ -15,6 +15,7 @@ import {
 import toast from "react-hot-toast";
 import { LuArrowRight, LuLoader } from "react-icons/lu";
 import { PLANS, type PlanType, type BillingPeriod } from "@/config/plans";
+import { planSelectionSchema } from "@/lib/validations/plan";
 
 export default function ChoosePlanPage() {
 	const [selectedPlans, setSelectedPlans] = useState<PlanType[]>([]);
@@ -24,6 +25,10 @@ export default function ChoosePlanPage() {
 
 	const handlePlanToggle = (plan: PlanType, checked: boolean) => {
 		if (checked) {
+			if (selectedPlans.length >= 3) {
+				toast.error("Maximum 3 modules allowed");
+				return;
+			}
 			setSelectedPlans((prev) => [...prev, plan]);
 			toast.success(`${plan.toUpperCase()} module added!`);
 		} else {
@@ -33,8 +38,14 @@ export default function ChoosePlanPage() {
 	};
 
 	const handleProceedToPayment = async () => {
-		if (selectedPlans.length === 0) {
-			toast.error("Please select at least one module");
+		const validationResult = planSelectionSchema.safeParse({
+			selectedPlans,
+			billingPeriod: billing,
+			autoScale,
+		});
+
+		if (!validationResult.success) {
+			toast.error(validationResult.error.issues[0].message);
 			return;
 		}
 
@@ -44,6 +55,17 @@ export default function ChoosePlanPage() {
 		await new Promise((resolve) => setTimeout(resolve, 1500));
 
 		setIsLoading(false);
+	};
+
+	const calculateTotal = () => {
+		if (selectedPlans.length === 0) return 0;
+
+		return selectedPlans.reduce((acc, planType) => {
+			const plan = PLANS.find((p) => p.type === planType);
+			if (!plan) return acc;
+			const price = billing === "annual" ? plan.price.annual : plan.price.monthly;
+			return acc + price;
+		}, 0);
 	};
 
 	return (
@@ -91,7 +113,7 @@ You can change this later."
 							onCheckboxChange={(checked) => handlePlanToggle(plan.type, checked)}
 							header={plan.header}
 							price={{
-								amount: billing === "annual" ? "$50" : "$60",
+								amount: `$${billing === "annual" ? plan.price.annual : plan.price.monthly}`,
 								period: "mo",
 							}}
 							featuresTitle={plan.featuresTitle}
@@ -103,7 +125,7 @@ You can change this later."
 					))}
 				</div>
 
-				<div className="w-full mb-3 pl-36">
+				<div className="w-full max-w-5xl mb-3 lg:col-span-3">
 					<ToggleOption
 						label="Auto-scale usage"
 						description="If you exceed your included usage, extra usage is billed automatically."
@@ -132,9 +154,7 @@ You can change this later."
 						},
 					]}
 					total={{
-						amount: selectedPlans.length > 0
-							? `$${selectedPlans.length * (billing === "annual" ? 50 : 60)}`
-							: "$—",
+						amount: selectedPlans.length > 0 ? `$${calculateTotal()}` : "$—",
 						period: "mo",
 					}}
 					primaryAction={{
