@@ -16,7 +16,7 @@ import {
 import toast from "react-hot-toast";
 import { LuArrowRight, LuLoader } from "react-icons/lu";
 import { PLANS, type PlanType, type BillingPeriod } from "@/config/plans";
-import { planSelectionSchema } from "@/lib/validations/plan";
+import { getPricePerModule } from "@/lib/pricing";
 
 export default function ChoosePlanPage() {
 	const router = useRouter();
@@ -39,22 +39,14 @@ export default function ChoosePlanPage() {
 		}
 	};
 
-	const handleProceedToPayment = async () => {
-		const validationResult = planSelectionSchema.safeParse({
-			selectedPlans,
-			billingPeriod: billing,
-			autoScale,
-		});
-
-		if (!validationResult.success) {
-			toast.error(validationResult.error.issues[0].message);
+	const handleProceedToPayment = () => {
+		if (selectedPlans.length === 0) {
+			toast.error("Please select at least one module");
 			return;
 		}
 
 		setIsLoading(true);
 		toast.success("Proceeding to payment...");
-
-		await new Promise((resolve) => setTimeout(resolve, 1500));
 
 		const params = new URLSearchParams({
 			plans: selectedPlans.join(','),
@@ -121,7 +113,7 @@ You can change this later."
 							onCheckboxChange={(checked) => handlePlanToggle(plan.type, checked)}
 							header={plan.header}
 							price={{
-								amount: `$${billing === "annual" ? plan.price.annual : plan.price.monthly}`,
+								amount: `$${getPricePerModule(billing)}`,
 								period: "mo",
 							}}
 							featuresTitle={plan.featuresTitle}
@@ -162,7 +154,9 @@ You can change this later."
 						},
 					]}
 					total={{
-						amount: selectedPlans.length > 0 ? `$${calculateTotal()}` : "$—",
+						amount: selectedPlans.length > 0
+							? `$${selectedPlans.length * getPricePerModule(billing)}`
+							: "$—",
 						period: "mo",
 					}}
 					primaryAction={{

@@ -8,19 +8,9 @@ import { motion } from "framer-motion";
 import toast from "react-hot-toast";
 import { z } from "zod";
 import { type FormErrors } from "@/types";
-import { type BillingPeriod } from "@/config/plans";
-
-const checkoutSchema = z.object({
-	cardNumber: z.string().min(13, "Card number is required"),
-	expiry: z.string().min(5, "Expiry date is required"),
-	cvc: z.string().min(3, "CVC is required"),
-	billingEmail: z.string().email("Valid email is required"),
-	country: z.string().min(1, "Country is required"),
-	companyName: z.string().optional(),
-	taxId: z.string().optional(),
-});
-
-type CheckoutFormData = z.infer<typeof checkoutSchema>;
+import { validateBillingPeriod, getPricePerModule, getNextRenewalDate } from "@/lib/pricing";
+import { COUNTRIES } from "@/config/countries";
+import { checkoutSchema, type CheckoutFormData } from "@/lib/validation";
 
 export default function CheckoutPage() {
 	const router = useRouter();
@@ -33,14 +23,14 @@ export default function CheckoutPage() {
 		return plans ? plans.split(',') : [];
 	}, [searchParams]);
 
-	const billing = (searchParams.get('billing') || 'annual') as BillingPeriod;
+	const billing = validateBillingPeriod(searchParams.get('billing'));
 	const autoScale = searchParams.get('autoScale') === 'true';
 
 	const planDetails = useMemo(() => {
-		const pricePerModule = billing === 'annual' ? 50 : 60;
+		const pricePerModule = getPricePerModule(billing);
 		const totalModules = selectedPlans.length;
 		const monthlyTotal = totalModules * pricePerModule;
-		const annualTotal = billing === 'annual' ? monthlyTotal * 12 : monthlyTotal * 12;
+		const annualTotal = monthlyTotal * 12;
 
 		return {
 			modules: selectedPlans.map(plan => plan.toUpperCase()).join(', ') || 'None',
@@ -48,6 +38,7 @@ export default function CheckoutPage() {
 			billingCycle: billing === 'annual' ? 'Annual' : 'Monthly',
 			monthlyAmount: `$${monthlyTotal.toLocaleString()}`,
 			totalToday: billing === 'annual' ? `$${annualTotal.toLocaleString()}` : `$${monthlyTotal.toLocaleString()}`,
+			nextRenewal: getNextRenewalDate(billing),
 		};
 	}, [selectedPlans, billing]);
 
@@ -61,9 +52,6 @@ export default function CheckoutPage() {
 
 		try {
 			const validatedData = checkoutSchema.parse(formValues);
-			console.log("Validated checkout data:", validatedData);
-
-			await new Promise((resolve) => setTimeout(resolve, 2000));
 
 			toast.success("Payment successful!");
 			router.push("/dashboard");
@@ -162,26 +150,18 @@ export default function CheckoutPage() {
 									id="country"
 									name="country"
 									placeholder="Country"
+									aria-label="Country"
 									selectSize="md"
 									defaultValue=""
 									error={errors.country}
-									options={[
-										{ value: "us", label: "United States" },
-										{ value: "ca", label: "Canada" },
-										{ value: "uk", label: "United Kingdom" },
-										{ value: "au", label: "Australia" },
-										{ value: "de", label: "Germany" },
-										{ value: "fr", label: "France" },
-										{ value: "jp", label: "Japan" },
-										{ value: "in", label: "India" },
-									]}
+									options={COUNTRIES}
 								/>
 								<Input
 									id="companyName"
 									name="companyName"
 									type="text"
 									placeholder="Company name (optional)"
-									aria-label="Company name"
+									aria-label="Company name (optional)"
 									autoComplete="organization"
 									inputSize="md"
 								/>
@@ -191,7 +171,7 @@ export default function CheckoutPage() {
 										name="taxId"
 										type="text"
 										placeholder="VAT/Tax ID (optional)"
-										aria-label="VAT/Tax ID"
+										aria-label="VAT/Tax ID (optional)"
 										inputSize="md"
 									/>
 									<p className="text-[11px] text-gray-600 mt-2 pl-4">Used for invoices where applicable.</p>
@@ -255,7 +235,7 @@ export default function CheckoutPage() {
 							subtotal={{ label: "Monthly total", amount: planDetails.monthlyAmount }}
 							tax={{ label: "Tax", amount: "Calculated at checkout", isCalculating: true }}
 							total={{ label: "Total today", amount: planDetails.totalToday }}
-							footer={billing === 'annual' ? `Next renewal: ${new Date(new Date().setFullYear(new Date().getFullYear() + 1)).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}` : `Next renewal: ${new Date(new Date().setMonth(new Date().getMonth() + 1)).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}`}
+							footer={`Next renewal: ${planDetails.nextRenewal}`}
 							onChangePlan={handleBack}
 							delay={0.3}
 						/>
