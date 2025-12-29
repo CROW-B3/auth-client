@@ -10,8 +10,8 @@ export default function ConnectWebPage() {
 	const router = useRouter();
 	const [packageManager, setPackageManager] = useState<PackageManager>("bun");
 
-	// Mock API key - in production, this would come from your backend
-	const apiKey = "crow_sk_1234567890abcdef1234567890abcdef";
+	// API key should be fetched from backend or environment variable
+	const apiKey = process.env.NEXT_PUBLIC_CROW_API_KEY || "crow_sk_demo_placeholder";
 
 	const installCommands: Record<PackageManager, string> = {
 		bun: "bun add @crow/web-sdk",
@@ -33,6 +33,11 @@ crow.track('page_view', {
 });`;
 
 	const handleConnect = () => {
+		const savedStatus = localStorage.getItem("crow_connection_status");
+		const statusMap = savedStatus ? JSON.parse(savedStatus) : {};
+		statusMap.web = "connected";
+		localStorage.setItem("crow_connection_status", JSON.stringify(statusMap));
+
 		toast.success("Web source connected!");
 		router.push("/connect-sources");
 	};
