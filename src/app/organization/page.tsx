@@ -32,20 +32,21 @@ export default function CreateOrganizationPage() {
 
 		} catch (error) {
 			if (error instanceof z.ZodError) {
+				const fieldErrors = error.flatten().fieldErrors;
 				const newErrors: FormErrors<CreateOrganizationFormData> = {};
-				const zodError = error as z.ZodError<CreateOrganizationFormData>;
 
-				zodError.issues.forEach((fieldError) => {
-					if (fieldError.path[0]) {
-						const fieldName = fieldError.path[0] as keyof CreateOrganizationFormData;
-						newErrors[fieldName] = fieldError.message;
+				for (const [key, messages] of Object.entries(fieldErrors)) {
+					if (Array.isArray(messages) && messages.length > 0) {
+						const fieldName = key as keyof CreateOrganizationFormData;
+						newErrors[fieldName] = messages[0];
 					}
-				});
-				setErrors(newErrors);
-
-				if (zodError.issues.length > 0) {
-					toast.error("Please fix the errors in the form");
 				}
+
+				setErrors(newErrors);
+				toast.error("Please fix the errors in the form");
+			} else {
+				console.error("An unexpected error occurred:", error);
+				toast.error("An unexpected error occurred. Please try again.");
 			}
 		} finally {
 			setIsSubmitting(false);
@@ -64,7 +65,7 @@ export default function CreateOrganizationPage() {
 				logo={{ text: "CROW", src: "/favicon.webp", alt: "CROW Logo" }}
 				rightContent={
 				<span className="text-gray-500 flex items-center gap-2">
-					Have an account? <NavLink href="/login">Sign in</NavLink>
+					Have an account? <NavLink href="/login">Sign up</NavLink>
 				</span>}
 			/>
 
