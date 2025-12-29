@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import { motion } from "framer-motion";
 import {
 	AnimatedBackground,
 	Navbar,
@@ -75,7 +76,12 @@ export default function ChoosePlanPage() {
 You can change this later."
 				/>
 
-				<div className="w-full max-w-5xl flex flex-row items-end justify-end gap-8 sm:gap-12 md:gap-16 mb-6 flex-wrap">
+				<motion.div
+					className="w-full max-w-5xl flex flex-row items-end justify-end gap-8 sm:gap-12 md:gap-16 mb-6 flex-wrap"
+					initial={{ opacity: 0, y: 20 }}
+					animate={{ opacity: 1, y: 0 }}
+					transition={{ duration: 0.5, delay: 0.3 }}
+				>
 					<SegmentedControl
 						size="sm"
 						options={[
@@ -87,7 +93,7 @@ You can change this later."
 						label="Billing"
 						description="Annual includes a discount."
 					/>
-				</div>
+				</motion.div>
 
 				<div className="grid grid-cols-1 lg:grid-cols-3 gap-5 w-full max-w-5xl mb-8 items-stretch">
 					{PLANS.map((plan, index) => (
@@ -111,65 +117,82 @@ You can change this later."
 					))}
 				</div>
 
-				<div className="w-full mb-3 pl-36">
+				<motion.div
+					className="w-full mb-3 pl-36"
+					initial={{ opacity: 0, x: -20 }}
+					animate={{ opacity: 1, x: 0 }}
+					transition={{ duration: 0.5, delay: 0.6 }}
+				>
 					<ToggleOption
 						label="Auto-scale usage"
 						description="If you exceed your included usage, extra usage is billed automatically."
 						checked={autoScale}
 						onChange={setAutoScale}
 					/>
-				</div>
+				</motion.div>
 
-				<CheckoutSummary
-					variant="dark"
-					items={[
-						{
-							label: "COMPONENTS",
-							value: `${selectedPlans.length}/3 Selected`,
-							highlightValue: true,
-						},
-						{
-							label: "TOTAL INCLUDED USAGE",
-							value: selectedPlans.length > 0
-								? `${selectedPlans.length}M interactions, ${selectedPlans.length}M patterns`
-								: "0 interactions, 0 patterns",
-						},
-						{
-							label: "ADD-ONS",
-							value: "0 packs added",
-						},
-					]}
-					total={{
-						amount: selectedPlans.length > 0
-							? `$${selectedPlans.length * (billing === "annual" ? 50 : 60)}`
-							: "$—",
-						period: "mo",
-					}}
-					primaryAction={{
-						text: "Continue to checkout",
-						icon: isLoading ? (
-							<LuLoader className="w-4 h-4 animate-spin" />
-						) : (
-							<LuArrowRight className="w-4 h-4" />
-						),
-						onClick: handleProceedToPayment,
-					}}
-					secondaryActions={{
-						left: "Change anytime.",
-						right: "Talk to sales",
-						onRightClick: () => toast.success("Opening sales chat..."),
-					}}
-					size="sm"
-				/>
+				<motion.div
+					initial={{ opacity: 0, y: 30 }}
+					animate={{ opacity: 1, y: 0 }}
+					transition={{ duration: 0.6, delay: 0.7 }}
+				>
+					<CheckoutSummary
+						variant="dark"
+						items={[
+							{
+								label: "COMPONENTS",
+								value: `${selectedPlans.length}/3 Selected`,
+								highlightValue: true,
+							},
+							{
+								label: "TOTAL INCLUDED USAGE",
+								value: selectedPlans.length > 0
+									? `${selectedPlans.length}M interactions, ${selectedPlans.length}M patterns`
+									: "0 interactions, 0 patterns",
+							},
+							{
+								label: "ADD-ONS",
+								value: "0 packs added",
+							},
+						]}
+						total={{
+							amount: selectedPlans.length > 0
+								? `$${selectedPlans.length * (billing === "annual" ? 50 : 60)}`
+								: "$—",
+							period: "mo",
+						}}
+						primaryAction={{
+							text: "Continue to checkout",
+							icon: isLoading ? (
+								<LuLoader className="w-4 h-4 animate-spin" />
+							) : (
+								<LuArrowRight className="w-4 h-4" />
+							),
+							onClick: handleProceedToPayment,
+						}}
+						secondaryActions={{
+							left: "Change anytime.",
+							right: "Talk to sales",
+							onRightClick: () => toast.success("Opening sales chat..."),
+						}}
+						size="sm"
+					/>
+				</motion.div>
 			</main>
 
-			<Footer
-				invitePrefix="Each module includes a discount."
-				inviteText="Compare modules"
-				inviteHref="/compare-modules"
-				termsPrefix="You can add or remove modules later in Settings."
-				termsLinks={[]}
-			/>
+			<motion.div
+				initial={{ opacity: 0 }}
+				animate={{ opacity: 1 }}
+				transition={{ duration: 0.5, delay: 0.9 }}
+			>
+				<Footer
+					invitePrefix="Each module includes a discount."
+					inviteText="Compare modules"
+					inviteHref="/compare-modules"
+					termsPrefix="You can add or remove modules later in Settings."
+					termsLinks={[]}
+				/>
+			</motion.div>
 		</div>
 	);
 }
