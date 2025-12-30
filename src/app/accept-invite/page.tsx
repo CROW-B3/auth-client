@@ -206,27 +206,25 @@ export default function AcceptInvitePage() {
 								/>
 							</motion.div>
 
-							<motion.div variants={{ hidden: { opacity: 0, y: 10 }, visible: { opacity: 1, y: 0 } }}>
-								<div className="relative">
-									<Input
-										inputSize="sm"
-										id="password"
-										name="password"
-										type={showPassword ? "text" : "password"}
-										placeholder="Create password"
-										aria-label="Create password"
-										autoComplete="new-password"
-										error={errors.password}
-									/>
-									<button
-										type="button"
-										onClick={() => setShowPassword(!showPassword)}
-										className="absolute inset-y-0 right-0 flex items-center px-4 text-gray-500 hover:text-violet-400 focus:outline-none transition-colors"
-										aria-label={showPassword ? "Hide password" : "Show password"}
-									>
-										{showPassword ? <LuEyeOff className="w-[18px] h-[18px]" /> : <LuEye className="w-[18px] h-[18px]" />}
-									</button>
-								</div>
+							<motion.div variants={{ hidden: { opacity: 0, y: 10 }, visible: { opacity: 1, y: 0 } }} className="relative">
+								<Input
+									inputSize="sm"
+									id="password"
+									name="password"
+									type={showPassword ? "text" : "password"}
+									placeholder="Create password"
+									aria-label="Create password"
+									autoComplete="new-password"
+									error={errors.password}
+								/>
+								<button
+									type="button"
+									onClick={() => setShowPassword(!showPassword)}
+									className="absolute top-0 right-0 h-9 flex items-center justify-center px-4 text-gray-500 hover:text-violet-400 focus:outline-none transition-colors z-10"
+									aria-label={showPassword ? "Hide password" : "Show password"}
+								>
+									{showPassword ? <LuEyeOff className="w-[18px] h-[18px]" /> : <LuEye className="w-[18px] h-[18px]" />}
+								</button>
 							</motion.div>
 						</motion.div>
 
