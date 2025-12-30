@@ -3,13 +3,19 @@ import { PiHeadCircuit } from "react-icons/pi";
 import { MdOutlineTouchApp } from "react-icons/md";
 import type { PlanCardProps } from "@b3-crow/ui-kit";
 
-export type PlanType = "web" | "cctv" | "social";
-export type BillingPeriod = "monthly" | "annual";
+export const PLAN_TYPES = ["web", "cctv", "social"] as const;
+export const BILLING_PERIODS = ["monthly", "annual"] as const;
+
+export type PlanType = (typeof PLAN_TYPES)[number];
+export type BillingPeriod = (typeof BILLING_PERIODS)[number];
 
 export interface PlanConfig {
 	type: PlanType;
 	header: NonNullable<PlanCardProps["header"]>;
-	price: NonNullable<PlanCardProps["price"]>;
+	price: {
+		monthly: number;
+		annual: number;
+	};
 	featuresTitle: string;
 	features: NonNullable<PlanCardProps["features"]>;
 	recommended: boolean;
@@ -23,8 +29,8 @@ export const PLANS: PlanConfig[] = [
 			description: "Digital journey + interaction capture.",
 		},
 		price: {
-			amount: "$60",
-			period: "mo",
+			monthly: 60,
+			annual: 50,
 		},
 		featuresTitle: "INCLUDED LIMITS",
 		features: [
@@ -62,8 +68,8 @@ export const PLANS: PlanConfig[] = [
 			description: "Physical behavior + camera signals.",
 		},
 		price: {
-			amount: "$60",
-			period: "mo",
+			monthly: 60,
+			annual: 50,
 		},
 		featuresTitle: "INCLUDED LIMITS",
 		features: [
@@ -101,8 +107,8 @@ export const PLANS: PlanConfig[] = [
 			description: "Mentions, sentiment, and trend signals.",
 		},
 		price: {
-			amount: "$60",
-			period: "mo",
+			monthly: 60,
+			annual: 50,
 		},
 		featuresTitle: "INCLUDED LIMITS",
 		features: [
