@@ -17,6 +17,7 @@ import {
 import toast from "react-hot-toast";
 import { LuArrowRight, LuLoader } from "react-icons/lu";
 import { PLANS, type PlanType, type BillingPeriod } from "@/config/plans";
+import { getPricePerModule } from "@/lib/pricing";
 
 export default function ChoosePlanPage() {
 	const router = useRouter();
@@ -27,6 +28,10 @@ export default function ChoosePlanPage() {
 
 	const handlePlanToggle = (plan: PlanType, checked: boolean) => {
 		if (checked) {
+			if (selectedPlans.length >= 3) {
+				toast.error("Maximum 3 modules allowed");
+				return;
+			}
 			setSelectedPlans((prev) => [...prev, plan]);
 			toast.success(`${plan.toUpperCase()} module added!`);
 		} else {
@@ -35,7 +40,7 @@ export default function ChoosePlanPage() {
 		}
 	};
 
-	const handleProceedToPayment = async () => {
+	const handleProceedToPayment = () => {
 		if (selectedPlans.length === 0) {
 			toast.error("Please select at least one module");
 			return;
@@ -43,8 +48,6 @@ export default function ChoosePlanPage() {
 
 		setIsLoading(true);
 		toast.success("Proceeding to payment...");
-
-		await new Promise((resolve) => setTimeout(resolve, 1500));
 
 		const params = new URLSearchParams({
 			plans: selectedPlans.join(','),
@@ -105,7 +108,7 @@ You can change this later."
 							onCheckboxChange={(checked) => handlePlanToggle(plan.type, checked)}
 							header={plan.header}
 							price={{
-								amount: billing === "annual" ? "$50" : "$60",
+								amount: `$${getPricePerModule(billing)}`,
 								period: "mo",
 							}}
 							featuresTitle={plan.featuresTitle}
