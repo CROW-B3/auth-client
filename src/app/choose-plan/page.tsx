@@ -57,17 +57,6 @@ export default function ChoosePlanPage() {
 		router.push(`/checkout?${params.toString()}`);
 	};
 
-	const calculateTotal = () => {
-		if (selectedPlans.length === 0) return 0;
-
-		return selectedPlans.reduce((acc, planType) => {
-			const plan = PLANS.find((p) => p.type === planType);
-			if (!plan) return acc;
-			const price = billing === "annual" ? plan.price.annual : plan.price.monthly;
-			return acc + price;
-		}, 0);
-	};
-
 	return (
 		<div className="min-h-screen flex flex-col antialiased selection:bg-violet-500/30 selection:text-violet-200 overflow-x-hidden relative">
 			<AnimatedBackground />
