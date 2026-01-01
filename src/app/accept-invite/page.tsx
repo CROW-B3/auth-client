@@ -29,12 +29,10 @@ export default function AcceptInvitePage() {
 		email: "name@company.com",
 	});
 
-	// Fetch invitation details from URL token
 	useEffect(() => {
 		const token = searchParams.get("token");
 
 		if (!token) {
-			// No token provided, use default mock data for development
 			setIsLoadingInvite(false);
 			return;
 		}
@@ -44,7 +42,6 @@ export default function AcceptInvitePage() {
 				const response = await fetch(`/api/invitations/${encodeURIComponent(token)}`);
 
 				if (!response.ok) {
-					// Only show toast for server errors (500+), not for 404 (API not implemented)
 					if (response.status >= 500) {
 						toast.error("Failed to load invitation details");
 					}
@@ -59,7 +56,6 @@ export default function AcceptInvitePage() {
 				});
 			} catch (error) {
 				console.error("Error fetching invitation:", error);
-				// Network errors or other issues - silently fail in development
 			} finally {
 				setIsLoadingInvite(false);
 			}
@@ -77,13 +73,9 @@ export default function AcceptInvitePage() {
 		const formValues = Object.fromEntries(formData.entries());
 
 		try {
-			// Validate form data
 			const validatedData = acceptInviteSchema.parse(formValues);
-
-			// Get token from URL
 			const token = searchParams.get("token");
 
-			// Make API call to accept invitation
 			const response = await fetch("/api/invitations/accept", {
 				method: "POST",
 				headers: {
@@ -122,7 +114,6 @@ export default function AcceptInvitePage() {
 					toast.error("Please fix the errors in the form");
 				}
 			} else {
-				// Handle API errors or other unexpected errors
 				console.error("Accept invite error:", error);
 				const errorMessage = error instanceof Error ? error.message : "An unexpected error occurred. Please try again.";
 				toast.error(errorMessage);

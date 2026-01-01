@@ -18,6 +18,7 @@ import toast from "react-hot-toast";
 import { LuArrowRight, LuLoader } from "react-icons/lu";
 import { PLANS, type PlanType, type BillingPeriod } from "@/config/plans";
 import { getPricePerModule } from "@/lib/pricing";
+import { cn } from "@/lib/cn";
 
 export default function ChoosePlanPage() {
 	const router = useRouter();
