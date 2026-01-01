@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, Suspense } from "react";
 import { AnimatedBackground, Button, Input, Navbar, NavLink, PageHeader, InvitationDetailsCard } from "@b3-crow/ui-kit";
 import { LuArrowRight, LuLoader, LuEye, LuEyeOff } from "react-icons/lu";
 import { z } from "zod";
@@ -16,7 +16,7 @@ interface InvitationDetails {
 	email: string;
 }
 
-export default function AcceptInvitePage() {
+function AcceptInviteContent() {
 	const router = useRouter();
 	const searchParams = useSearchParams();
 	const [errors, setErrors] = useState<FormErrors<AcceptInviteFormData>>({});
@@ -254,11 +254,19 @@ export default function AcceptInvitePage() {
 					>
 						<NavLink href="/login">Sign in instead</NavLink>
 						<p className="text-[11px] text-gray-600">
-							By accepting, you'll be added to the organization workspace.
+							By accepting, you&apos;ll be added to the organization workspace.
 						</p>
 					</motion.div>
 				</motion.div>
 			</main>
 		</div>
+	);
+}
+
+export default function AcceptInvitePage() {
+	return (
+		<Suspense fallback={<div className="min-h-screen flex items-center justify-center"><LuLoader className="animate-spin w-8 h-8 text-violet-500" /></div>}>
+			<AcceptInviteContent />
+		</Suspense>
 	);
 }

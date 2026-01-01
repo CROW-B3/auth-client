@@ -65,7 +65,7 @@ export default function InviteTeamPage() {
 
 		try {
 			// Build form data object matching schema structure
-			const permissions: Record<string, any> = {};
+			const permissions: Record<string, unknown> = {};
 
 			if (chatEnabled) {
 				permissions.chat = {
