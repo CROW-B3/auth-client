@@ -47,7 +47,6 @@ export default function Home() {
 				});
 				setErrors(newErrors);
 
-				// Show specific toast for terms error, otherwise generic message
 				if (newErrors.terms) {
 					toast.error(newErrors.terms);
 				} else if (zodError.issues.length > 0) {
