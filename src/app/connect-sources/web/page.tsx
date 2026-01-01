@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { AnimatedBackground, Navbar, PageHeader, Button, PackageManagerSelector, type PackageManager, CodeBlock, ApiKeyInput } from "@b3-crow/ui-kit";
 import { motion } from "framer-motion";
 import toast from "react-hot-toast";
+import { WEB_SDK_INSTALL_COMMANDS, getWebSDKInitCode } from "@/lib/constants/web-sdk";
 
 export default function ConnectWebPage() {
 	const router = useRouter();
@@ -12,25 +13,7 @@ export default function ConnectWebPage() {
 
 	// API key should be fetched from backend or environment variable
 	const apiKey = process.env.NEXT_PUBLIC_CROW_API_KEY || "crow_sk_demo_placeholder";
-
-	const installCommands: Record<PackageManager, string> = {
-		bun: "bun add @crow/web-sdk",
-		npm: "npm install @crow/web-sdk",
-		pnpm: "pnpm add @crow/web-sdk",
-		yarn: "yarn add @crow/web-sdk",
-	};
-
-	const initCode = `import { CrowSDK } from '@crow/web-sdk';
-
-const crow = new CrowSDK({
-  apiKey: '${apiKey}',
-  orgId: 'your-org-id' // optional
-});
-
-// Track page views
-crow.track('page_view', {
-  path: window.location.pathname
-});`;
+	const initCode = getWebSDKInitCode(apiKey);
 
 	const handleConnect = () => {
 		const savedStatus = localStorage.getItem("crow_connection_status");
@@ -74,7 +57,7 @@ crow.track('page_view', {
 								onChange={setPackageManager}
 							/>
 						</div>
-						<CodeBlock code={installCommands[packageManager]} showCopy={true} />
+						<CodeBlock code={WEB_SDK_INSTALL_COMMANDS[packageManager]} showCopy={true} />
 					</div>
 
 					{/* Initialize Section */}

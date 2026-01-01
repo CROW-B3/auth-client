@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState, useMemo, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { AnimatedBackground, Button, Input, Navbar, PageHeader, Select, OrderSummaryCard, FormSection } from "@b3-crow/ui-kit";
 import { LuArrowLeft, LuCreditCard, LuLock } from "react-icons/lu";
@@ -12,7 +12,7 @@ import { validateBillingPeriod, getPricePerModule, getNextRenewalDate } from "@/
 import { COUNTRIES } from "@/config/countries";
 import { checkoutSchema, type CheckoutFormData } from "@/lib/validation";
 
-export default function CheckoutPage() {
+function CheckoutContent() {
 	const router = useRouter();
 	const searchParams = useSearchParams();
 	const [errors, setErrors] = useState<FormErrors<CheckoutFormData>>({});
@@ -51,7 +51,7 @@ export default function CheckoutPage() {
 		const formValues = Object.fromEntries(formData.entries());
 
 		try {
-			const validatedData = checkoutSchema.parse(formValues);
+			checkoutSchema.parse(formValues);
 
 			toast.success("Payment successful!");
 			router.push("/dashboard");
@@ -243,5 +243,13 @@ export default function CheckoutPage() {
 				</div>
 			</main>
 		</div>
+	);
+}
+
+export default function CheckoutPage() {
+	return (
+		<Suspense fallback={<div className="min-h-screen flex items-center justify-center">Loading...</div>}>
+			<CheckoutContent />
+		</Suspense>
 	);
 }
