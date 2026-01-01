@@ -4,7 +4,7 @@
 	"private": true,
 	"scripts": {
 		"dev": "next dev --turbopack",
-		"build": "next build && opennextjs-cloudflare build",
+		"build": "next build",
 		"start": "next start",
 		"lint": "next lint",
 		"deploy": "opennextjs-cloudflare build && opennextjs-cloudflare deploy",
@@ -13,7 +13,7 @@
 		"cf-typegen": "wrangler types --env-interface CloudflareEnv ./cloudflare-env.d.ts"
 	},
 	"dependencies": {
-		"@b3-crow/ui-kit": "^0.0.30-pr22.2",
+		"@b3-crow/ui-kit": "^0.0.30-pr22.11",
 		"@opennextjs/cloudflare": "^1.11.0",
 		"framer-motion": "^12.23.26",
 		"lucide-react": "^0.562.0",
@@ -21,6 +21,7 @@
 		"react": "19.1.0",
 		"react-dom": "19.1.0",
 		"react-hot-toast": "^2.6.0",
+		"react-icons": "^5.4.0",
 		"zod": "^4.2.1"
 	},
 	"devDependencies": {
