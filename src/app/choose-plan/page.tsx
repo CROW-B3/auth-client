@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useRouter } from "next/navigation";
 import {
 	AnimatedBackground,
 	Navbar,
@@ -15,9 +16,10 @@ import {
 import toast from "react-hot-toast";
 import { LuArrowRight, LuLoader } from "react-icons/lu";
 import { PLANS, type PlanType, type BillingPeriod } from "@/config/plans";
-import { planSelectionSchema } from "@/lib/validations/plan";
+import { getPricePerModule } from "@/lib/pricing";
 
 export default function ChoosePlanPage() {
+	const router = useRouter();
 	const [selectedPlans, setSelectedPlans] = useState<PlanType[]>([]);
 	const [billing, setBilling] = useState<BillingPeriod>("annual");
 	const [autoScale, setAutoScale] = useState(false);
@@ -37,35 +39,22 @@ export default function ChoosePlanPage() {
 		}
 	};
 
-	const handleProceedToPayment = async () => {
-		const validationResult = planSelectionSchema.safeParse({
-			selectedPlans,
-			billingPeriod: billing,
-			autoScale,
-		});
-
-		if (!validationResult.success) {
-			toast.error(validationResult.error.issues[0].message);
+	const handleProceedToPayment = () => {
+		if (selectedPlans.length === 0) {
+			toast.error("Please select at least one module");
 			return;
 		}
 
 		setIsLoading(true);
 		toast.success("Proceeding to payment...");
 
-		await new Promise((resolve) => setTimeout(resolve, 1500));
+		const params = new URLSearchParams({
+			plans: selectedPlans.join(','),
+			billing: billing,
+			autoScale: autoScale.toString(),
+		});
 
-		setIsLoading(false);
-	};
-
-	const calculateTotal = () => {
-		if (selectedPlans.length === 0) return 0;
-
-		return selectedPlans.reduce((acc, planType) => {
-			const plan = PLANS.find((p) => p.type === planType);
-			if (!plan) return acc;
-			const price = billing === "annual" ? plan.price.annual : plan.price.monthly;
-			return acc + price;
-		}, 0);
+		router.push(`/checkout?${params.toString()}`);
 	};
 
 	return (
@@ -113,7 +102,7 @@ You can change this later."
 							onCheckboxChange={(checked) => handlePlanToggle(plan.type, checked)}
 							header={plan.header}
 							price={{
-								amount: `$${billing === "annual" ? plan.price.annual : plan.price.monthly}`,
+								amount: `$${getPricePerModule(billing)}`,
 								period: "mo",
 							}}
 							featuresTitle={plan.featuresTitle}
@@ -154,7 +143,9 @@ You can change this later."
 						},
 					]}
 					total={{
-						amount: selectedPlans.length > 0 ? `$${calculateTotal()}` : "$—",
+						amount: selectedPlans.length > 0
+							? `$${selectedPlans.length * getPricePerModule(billing)}`
+							: "$—",
 						period: "mo",
 					}}
 					primaryAction={{
