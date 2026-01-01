@@ -51,16 +51,28 @@ function isFutureExpiry(value: string): boolean {
 	return year > currentYear || (year === currentYear && month >= currentMonth);
 }
 
+export const expiryDateSchema = z
+	.string()
+	.regex(/^(0[1-9]|1[0-2])\/\d{2}$/, "Expiry must be in MM/YY format")
+	.refine(isFutureExpiry, "Expiry date must be in the future")
+	.transform((value) => {
+		const [monthStr, yearStr] = value.split("/");
+		return {
+			month: Number(monthStr),
+			year: 2000 + Number(yearStr),
+			formatted: value,
+		};
+	});
+
+export type ExpiryDate = z.infer<typeof expiryDateSchema>;
+
 export const checkoutSchema = z.object({
 	cardNumber: z
 		.string()
 		.trim()
 		.regex(/^[\d\s-]+$/, "Card number must contain only digits, spaces, or dashes")
 		.refine(isValidCardNumber, "Invalid card number"),
-	expiry: z
-		.string()
-		.regex(/^(0[1-9]|1[0-2])\/\d{2}$/, "Expiry must be in MM/YY format")
-		.refine(isFutureExpiry, "Expiry date must be in the future"),
+	expiry: expiryDateSchema,
 	cvc: z
 		.string()
 		.regex(/^\d{3,4}$/, "CVC must be 3 or 4 digits"),
