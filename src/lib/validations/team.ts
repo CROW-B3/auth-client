@@ -1,11 +1,16 @@
 import { z } from "zod";
 
+const normalizeEmail = (email: string) => email.trim().toLowerCase().normalize("NFKC");
+
 export const inviteTeamSchema = z.object({
 	emails: z
 		.array(z.string().email("Invalid email address"))
 		.min(1, "At least one email is required")
 		.refine(
-			(emails) => new Set(emails).size === emails.length,
+			(emails) => {
+				const normalized = emails.map(normalizeEmail);
+				return new Set(normalized).size === normalized.length;
+			},
 			{ message: "Emails must be unique" }
 		),
 	permissions: z.object({
@@ -16,7 +21,7 @@ export const inviteTeamSchema = z.object({
 				lookbackWindow: z.enum(["7days", "30days", "90days", "1year", "all"]),
 			})
 			.refine(
-				(data) => !data.enabled || data.components.length > 0,
+				(chat) => !chat.enabled || chat.components.length > 0,
 				{
 					message: "At least one component required when chat is enabled",
 					path: ["components"],
@@ -35,7 +40,7 @@ export const inviteTeamSchema = z.object({
 				}),
 			})
 			.refine(
-				(data) => !data.enabled || data.scopes.interactions || data.scopes.patterns,
+				(apiKeys) => !apiKeys.enabled || apiKeys.scopes.interactions || apiKeys.scopes.patterns,
 				{
 					message: "At least one scope required when API keys are enabled",
 					path: ["scopes"],
