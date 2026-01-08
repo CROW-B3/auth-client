@@ -12,8 +12,14 @@
   "observability": {
     "enabled": true,
   },
+  "routes": [
+    { "pattern": "auth.crowai.dev", "custom_domain": true }
+  ],
   "env": {
     "dev": {
+      "routes": [
+        { "pattern": "dev.auth.crowai.dev", "custom_domain": true }
+      ],
       "name": "crow-auth-client-dev",
     },
   },
