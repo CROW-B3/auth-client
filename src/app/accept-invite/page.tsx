@@ -9,6 +9,7 @@ import toast from "react-hot-toast";
 import { useRouter, useSearchParams } from "next/navigation";
 import { acceptInviteSchema, type AcceptInviteFormData } from "@/lib/validations";
 import { type FormErrors } from "@/types";
+import { MOCK_INVITATION, MOCK_INVITATION_FIELDS } from "@/lib/constants/mock-data";
 
 interface InvitationDetails {
 	organization: string;
@@ -23,11 +24,7 @@ function AcceptInviteContent() {
 	const [isSubmitting, setIsSubmitting] = useState(false);
 	const [showPassword, setShowPassword] = useState(false);
 	const [isLoadingInvite, setIsLoadingInvite] = useState(true);
-	const [invitationDetails, setInvitationDetails] = useState<InvitationDetails>({
-		organization: "Global Retail Ops",
-		role: "Analyst",
-		email: "name@company.com",
-	});
+	const [invitationDetails, setInvitationDetails] = useState<InvitationDetails>(MOCK_INVITATION);
 
 	useEffect(() => {
 		const token = searchParams.get("token");
@@ -155,9 +152,7 @@ function AcceptInviteContent() {
 						transition={{ delay: 0.2 }}
 					>
 						<InvitationDetailsCard
-							organization={invitationDetails.organization}
-							role={invitationDetails.role}
-							email={invitationDetails.email}
+							fields={[...MOCK_INVITATION_FIELDS]}
 						/>
 					</motion.div>
 
