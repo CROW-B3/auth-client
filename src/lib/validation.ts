@@ -54,9 +54,7 @@ function isFutureExpiry(value: string): boolean {
 export const checkoutSchema = z.object({
 	cardNumber: z
 		.string()
-		.trim()
-		.regex(/^[\d\s-]+$/, "Card number must contain only digits, spaces, or dashes")
-		.refine(isValidCardNumber, "Invalid card number"),
+		.min(1, "Card number is required"),
 	expiry: z
 		.string()
 		.regex(/^(0[1-9]|1[0-2])\/\d{2}$/, "Expiry must be in MM/YY format")

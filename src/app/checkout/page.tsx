@@ -53,8 +53,9 @@ function CheckoutContent() {
 		try {
 			checkoutSchema.parse(formValues);
 
-			toast.success("Payment successful!");
-			router.push("/dashboard");
+			await new Promise((resolve) => setTimeout(resolve, 2000));
+
+			router.push("/connect-sources");
 		} catch (error) {
 			if (error instanceof z.ZodError) {
 				const newErrors: FormErrors<CheckoutFormData> = {};
