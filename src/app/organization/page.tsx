@@ -2,9 +2,8 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { AnimatedBackground, Button, Divider, Input, Navbar, NavLink, PageHeader, Footer } from "@b3-crow/ui-kit";
+import { AnimatedBackground, Button, Input, Navbar, NavLink, PageHeader, Footer } from "@b3-crow/ui-kit";
 import { LuArrowRight, LuLoader } from "react-icons/lu";
-import { GrGoogle } from "react-icons/gr";
 import { z } from "zod";
 import { motion } from "framer-motion";
 import toast from "react-hot-toast";
@@ -53,10 +52,6 @@ export default function CreateOrganizationPage() {
 		} finally {
 			setIsSubmitting(false);
 		}
-	};
-
-	const handleGoogleSignup = () => {
-		toast.success("Google Sign-Up coming soon!");
 	};
 
 	return (
@@ -114,54 +109,6 @@ export default function CreateOrganizationPage() {
 									error={errors.organizationName}
 								/>
 							</motion.div>
-							<motion.div variants={{ hidden: { opacity: 0, y: 10 }, visible: { opacity: 1, y: 0 } }}>
-								<Input
-									inputSize="sm"
-									id="fullname"
-									name="fullname"
-									type="text"
-									placeholder="Your name"
-									aria-label="Full name"
-									autoComplete="name"
-									error={errors.fullname}
-								/>
-							</motion.div>
-							<motion.div variants={{ hidden: { opacity: 0, y: 10 }, visible: { opacity: 1, y: 0 } }}>
-								<Input
-									inputSize="sm"
-									id="email"
-									name="email"
-									type="email"
-									placeholder="name@company.com"
-									aria-label="Email"
-									autoComplete="email"
-									error={errors.email}
-								/>
-							</motion.div>
-							<motion.div variants={{ hidden: { opacity: 0, y: 10 }, visible: { opacity: 1, y: 0 } }}>
-								<Input
-									inputSize="sm"
-									id="password"
-									name="password"
-									type="password"
-									placeholder="Create password"
-									aria-label="Create password"
-									autoComplete="new-password"
-									error={errors.password}
-								/>
-							</motion.div>
-							<motion.div variants={{ hidden: { opacity: 0, y: 10 }, visible: { opacity: 1, y: 0 } }}>
-								<Input
-									inputSize="sm"
-									id="confirmPassword"
-									name="confirmPassword"
-									type="password"
-									placeholder="Confirm password"
-									aria-label="Confirm password"
-									autoComplete="new-password"
-									error={errors.confirmPassword}
-								/>
-							</motion.div>
 						</motion.div>
 
 						<motion.div
@@ -181,32 +128,6 @@ export default function CreateOrganizationPage() {
 							</Button>
 						</motion.div>
 
-						<motion.div
-							initial={{ opacity: 0 }}
-							animate={{ opacity: 1 }}
-							transition={{ duration: 0.5, delay: 0.9 }}
-						>
-							<Divider text="Or" />
-						</motion.div>
-
-						<motion.div
-							initial={{ opacity: 0, y: 10 }}
-							animate={{ opacity: 1, y: 0 }}
-							transition={{ duration: 0.5, delay: 1.0 }}
-						>
-							<Button
-								variant="outline"
-								type="button"
-								onClick={handleGoogleSignup}
-								showArrow={false}
-								className="w-full border-white/10 hover:bg-white/5 hover:border-white/20"
-							>
-								<div className="flex items-center gap-2">
-									<GrGoogle className="w-4 h-4" />
-									Continue with Google
-								</div>
-							</Button>
-						</motion.div>
 					</motion.form>
 				</div>
 			</main>

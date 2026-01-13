@@ -12,15 +12,38 @@
   "observability": {
     "enabled": true,
   },
+  "vars": {
+    "ENVIRONMENT": "prod",
+    "NEXT_PUBLIC_SITE_URL": "https://auth.crowai.dev",
+    "NEXT_PUBLIC_AUTH_API_URL": "https://api.crowai.dev",
+    "NEXT_PUBLIC_DASHBOARD_URL": "https://dashboard.crowai.dev",
+    "NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY": "pk_test_51SpAH5FhHtHJYxSlKyZHAAJ3tsGNywysGeJphbGGax6vDHkF3EX1DwLRsK8HLYTYJfY62dm3WEeSkZTDyhsDr8LJ00LD4Vi7GP",
+  },
   "routes": [
     { "pattern": "auth.crowai.dev", "custom_domain": true }
   ],
   "env": {
     "dev": {
+      "vars": {
+        "ENVIRONMENT": "dev",
+        "NEXT_PUBLIC_SITE_URL": "https://dev.auth.crowai.dev",
+        "NEXT_PUBLIC_AUTH_API_URL": "https://dev.api.crowai.dev",
+        "NEXT_PUBLIC_DASHBOARD_URL": "https://dev.dashboard.crowai.dev",
+        "NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY": "pk_test_51SpAH5FhHtHJYxSlKyZHAAJ3tsGNywysGeJphbGGax6vDHkF3EX1DwLRsK8HLYTYJfY62dm3WEeSkZTDyhsDr8LJ00LD4Vi7GP",
+      },
       "routes": [
         { "pattern": "dev.auth.crowai.dev", "custom_domain": true }
       ],
       "name": "crow-auth-client-dev",
+    },
+    "local": {
+      "vars": {
+        "ENVIRONMENT": "local",
+        "NEXT_PUBLIC_SITE_URL": "http://localhost:3001",
+        "NEXT_PUBLIC_AUTH_API_URL": "http://localhost:8000",
+        "NEXT_PUBLIC_DASHBOARD_URL": "http://localhost:3002",
+        "NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY": "pk_test_51SpAH5FhHtHJYxSlKyZHAAJ3tsGNywysGeJphbGGax6vDHkF3EX1DwLRsK8HLYTYJfY62dm3WEeSkZTDyhsDr8LJ00LD4Vi7GP",
+      },
     },
   },
   "placement": { "mode": "smart" },
