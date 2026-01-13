@@ -4,12 +4,11 @@ export interface Country {
 }
 
 export const COUNTRIES: Country[] = [
+	{ value: "lk", label: "Sri Lanka" },
 	{ value: "us", label: "United States" },
 	{ value: "ca", label: "Canada" },
 	{ value: "uk", label: "United Kingdom" },
 	{ value: "au", label: "Australia" },
-	{ value: "de", label: "Germany" },
 	{ value: "fr", label: "France" },
-	{ value: "jp", label: "Japan" },
 	{ value: "in", label: "India" },
 ];

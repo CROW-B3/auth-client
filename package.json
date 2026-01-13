@@ -14,7 +14,7 @@
 		"cf-typegen": "wrangler types --env-interface CloudflareEnv ./cloudflare-env.d.ts"
 	},
 	"dependencies": {
-		"@b3-crow/ui-kit": "^0.0.31",
+		"@b3-crow/ui-kit": "^0.0.33-pr29.1",
 		"@opennextjs/cloudflare": "^1.14.8",
 		"framer-motion": "^12.24.10",
 		"lucide-react": "^0.562.0",
