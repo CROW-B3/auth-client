@@ -69,9 +69,7 @@ export const createOrganizationSchema = z.object({
 		.string()
 		.min(2, "Organization name must be at least 2 characters")
 		.max(100, "Organization name must be less than 100 characters"),
-	fullname: fullnameSchema,
-	email: emailSchema,
-}).merge(passwordConfirmationSchema);
+});
 
 export type SignUpFormData = z.infer<typeof signUpSchema>;
 export type SignInFormData = z.infer<typeof signInSchema>;
