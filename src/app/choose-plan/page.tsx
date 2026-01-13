@@ -41,22 +41,38 @@ export default function ChoosePlanPage() {
 		}
 	};
 
-	const handleProceedToPayment = () => {
+	const handleProceedToPayment = async () => {
 		if (selectedPlans.length === 0) {
 			toast.error("Please select at least one module");
 			return;
 		}
 
 		setIsLoading(true);
-		toast.success("Proceeding to payment...");
 
-		const params = new URLSearchParams({
-			plans: selectedPlans.join(','),
-			billing: billing,
-			autoScale: autoScale.toString(),
-		});
+		try {
+			const response = await fetch('/api/stripe/checkout', {
+				method: 'POST',
+				headers: { 'Content-Type': 'application/json' },
+				body: JSON.stringify({
+					plans: selectedPlans,
+					billing,
+					autoScale,
+				}),
+			});
 
-		router.push(`/checkout?${params.toString()}`);
+			const data = await response.json();
+
+			if (!response.ok) {
+				throw new Error(data.error || 'Failed to create checkout session');
+			}
+
+			if (data.url) {
+				window.location.href = data.url;
+			}
+		} catch (error) {
+			toast.error(error instanceof Error ? error.message : 'Something went wrong');
+			setIsLoading(false);
+		}
 	};
 
 	return (
@@ -100,25 +116,36 @@ You can change this later."
 				</motion.div>
 
 				<div className="grid grid-cols-1 lg:grid-cols-3 gap-5 w-full max-w-5xl mb-8 items-stretch">
-					{PLANS.map((plan, index) => (
-						<PlanCard
-							key={plan.type}
-							variant="plan"
-							showCheckbox={true}
-							selected={selectedPlans.includes(plan.type)}
-							onCheckboxChange={(checked) => handlePlanToggle(plan.type, checked)}
-							header={plan.header}
-							price={{
-								amount: `$${getPricePerModule(billing)}`,
-								period: "mo",
-							}}
-							featuresTitle={plan.featuresTitle}
-							padding="sm"
-							features={plan.features}
-							animationDelay={index * 0.1}
-							className="flex flex-col w-full h-full"
-						/>
-					))}
+					{PLANS.map((plan, index) => {
+						const isSelected = selectedPlans.includes(plan.type);
+						return (
+							<div
+								key={plan.type}
+								onClick={(e) => {
+									if ((e.target as HTMLElement).closest('input[type="checkbox"]')) return;
+									handlePlanToggle(plan.type, !isSelected);
+								}}
+								className="cursor-pointer"
+							>
+								<PlanCard
+									variant="plan"
+									showCheckbox={true}
+									selected={isSelected}
+									onCheckboxChange={(checked) => handlePlanToggle(plan.type, checked)}
+									header={plan.header}
+									price={{
+										amount: `$${getPricePerModule(billing)}`,
+										period: "mo",
+									}}
+									featuresTitle={plan.featuresTitle}
+									padding="sm"
+									features={plan.features}
+									animationDelay={index * 0.1}
+									className="flex flex-col w-full h-full"
+								/>
+							</div>
+						);
+					})}
 				</div>
 
 				<motion.div
