@@ -55,7 +55,7 @@ function CheckoutContent() {
 
 			await new Promise((resolve) => setTimeout(resolve, 2000));
 
-			router.push("/connect-sources");
+			router.push("/connect-products");
 		} catch (error) {
 			if (error instanceof z.ZodError) {
 				const newErrors: FormErrors<CheckoutFormData> = {};
