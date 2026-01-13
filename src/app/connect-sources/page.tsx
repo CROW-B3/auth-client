@@ -44,7 +44,6 @@ export default function ConnectSourcesPage() {
 		},
 	]);
 
-	// Load connection status from localStorage on mount
 	useEffect(() => {
 		const savedStatus = localStorage.getItem(STORAGE_KEY);
 		if (savedStatus) {
@@ -76,13 +75,11 @@ export default function ConnectSourcesPage() {
 			toast.error("Please connect at least one source to continue");
 			return;
 		}
-		toast.success("Proceeding to dashboard...");
-		router.push("/dashboard");
+		router.push("/invite-team");
 	};
 
 	const handleSkip = () => {
-		toast.success("Skipping setup. You can connect sources later in Settings.");
-		router.push("/dashboard");
+		router.push("/invite-team");
 	};
 
 	return (
