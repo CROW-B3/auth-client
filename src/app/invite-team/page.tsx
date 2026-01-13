@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { useRouter } from "next/navigation";
 import { AnimatedBackground, Button, Navbar, PageHeader, Select, EmailTagInput, PermissionToggle, PendingInviteCard  } from "@b3-crow/ui-kit";
 import { LuArrowRight, LuLoader, LuMessageCircle, LuNetwork, LuTrendingUp, LuUsers, LuKey } from "react-icons/lu";
 import { motion } from "framer-motion";
@@ -9,46 +10,23 @@ import { z } from "zod";
 import { inviteTeamSchema, type PendingInvite } from "@/lib/validations";
 
 export default function InviteTeamPage() {
+	const router = useRouter();
 	const [emails, setEmails] = useState<string[]>([]);
 	const [isSubmitting, setIsSubmitting] = useState(false);
-	const [chatEnabled, setChatEnabled] = useState(true);
-	const [chatComponents, setChatComponents] = useState<string[]>(["web", "cctv"]);
+	const [chatEnabled, setChatEnabled] = useState(false);
+	const [chatComponents, setChatComponents] = useState<string[]>([]);
 	const [lookbackWindow, setLookbackWindow] = useState("1year");
-	const [interactionsEnabled, setInteractionsEnabled] = useState(true);
-	const [patternsEnabled, setPatternsEnabled] = useState(true);
+	const [interactionsEnabled, setInteractionsEnabled] = useState(false);
+	const [patternsEnabled, setPatternsEnabled] = useState(false);
 	const [teamManagementEnabled, setTeamManagementEnabled] = useState(false);
-	const [apiKeysEnabled, setApiKeysEnabled] = useState(true);
-	const [apiKeyInteractions, setApiKeyInteractions] = useState(true);
+	const [apiKeysEnabled, setApiKeysEnabled] = useState(false);
+	const [apiKeyInteractions, setApiKeyInteractions] = useState(false);
 	const [apiKeyPatterns, setApiKeyPatterns] = useState(false);
 	const [pendingInvites, setPendingInvites] = useState<PendingInvite[]>([]);
 	const [isLoadingInvites, setIsLoadingInvites] = useState(true);
 
-	// Fetch pending invitations from API
 	useEffect(() => {
-		const fetchPendingInvites = async () => {
-			try {
-				const response = await fetch("/api/invitations/pending");
-
-				if (!response.ok) {
-					// Only show toast for server errors (500+), not for 404 (API not implemented)
-					if (response.status >= 500) {
-						toast.error("Failed to load pending invitations");
-					}
-					throw new Error("Failed to fetch pending invitations");
-				}
-
-				const data = await response.json() as { invites?: PendingInvite[] };
-				setPendingInvites(data.invites || []);
-			} catch (error) {
-				console.error("Error fetching pending invites:", error);
-				// Network errors or other issues - silently fail in development
-				setPendingInvites([]);
-			} finally {
-				setIsLoadingInvites(false);
-			}
-		};
-
-		void fetchPendingInvites();
+		setIsLoadingInvites(false);
 	}, []);
 
 	const handleComponentToggle = (component: string) => {
@@ -64,7 +42,6 @@ export default function InviteTeamPage() {
 		setIsSubmitting(true);
 
 		try {
-			// Build form data object matching schema structure
 			const permissions: Record<string, unknown> = {};
 
 			if (chatEnabled) {
@@ -102,43 +79,65 @@ export default function InviteTeamPage() {
 				permissions,
 			};
 
-			// Validate using schema
 			const validatedData = inviteTeamSchema.parse(formData);
 
-			// Make API call to send invitations
-			const response = await fetch("/api/invitations/send", {
-				method: "POST",
-				headers: {
-					"Content-Type": "application/json",
-				},
-				body: JSON.stringify(validatedData),
+			await new Promise((resolve) => setTimeout(resolve, 1000));
+
+			const newInvites: PendingInvite[] = validatedData.emails.map((email, index) => {
+				const permissions: PendingInvite['permissions'] = {};
+
+				if (validatedData.permissions?.chat) {
+					permissions.chat = {
+						components: validatedData.permissions.chat.components,
+						lookbackWindow: validatedData.permissions.chat.lookbackWindow,
+					};
+				}
+
+				if (validatedData.permissions?.interactions !== undefined) {
+					permissions.interactions = validatedData.permissions.interactions;
+				}
+
+				if (validatedData.permissions?.patterns !== undefined) {
+					permissions.patterns = validatedData.permissions.patterns;
+				}
+
+				if (validatedData.permissions?.teamManagement !== undefined) {
+					permissions.teamManagement = validatedData.permissions.teamManagement;
+				}
+
+				if (validatedData.permissions?.apiKeys) {
+					const scopes: string[] = [];
+					if (validatedData.permissions.apiKeys.scopes.interactions) {
+						scopes.push('interactions');
+					}
+					if (validatedData.permissions.apiKeys.scopes.patterns) {
+						scopes.push('patterns');
+					}
+					permissions.apiKeys = { scopes };
+				}
+
+				return {
+					id: `invite-${Date.now()}-${index}`,
+					email,
+					initials: email.substring(0, 2).toUpperCase(),
+					status: "pending" as const,
+					permissions,
+					sentAt: new Date(),
+				};
 			});
 
-			if (!response.ok) {
-				const errorData = await response.json().catch(() => ({ message: "Failed to send invitations" })) as { message?: string };
-				throw new Error(errorData.message || "Failed to send invitations");
-			}
-
-			const result = await response.json() as { invites?: PendingInvite[] };
-
-			// Add new invites to the list (append to the end for chronological order)
-			if (result.invites) {
-				setPendingInvites([...pendingInvites, ...result.invites]);
-			}
+			setPendingInvites([...pendingInvites, ...newInvites]);
 
 			toast.success(`Invitations sent to ${emails.length} ${emails.length === 1 ? "person" : "people"}!`);
 
-			// Reset form
 			setEmails([]);
 		} catch (error) {
 			console.error("Error sending invitations:", error);
 
 			if (error instanceof z.ZodError) {
-				// Zod validation errors
 				const firstError = error.issues[0];
 				toast.error(firstError?.message || "Please fix validation errors");
 			} else {
-				// API or other errors
 				const errorMessage = error instanceof Error ? error.message : "Failed to send invitations";
 				toast.error(errorMessage);
 			}
@@ -148,42 +147,21 @@ export default function InviteTeamPage() {
 	};
 
 	const handleSkip = () => {
-		toast.success("You can invite team members later!");
+		router.push("/success");
+	};
+
+	const handleFinish = () => {
+		router.push("/success");
 	};
 
 	const handleResend = async (id: string) => {
-		try {
-			const response = await fetch(`/api/invitations/${id}/resend`, {
-				method: "POST",
-			});
-
-			if (!response.ok) {
-				throw new Error("Failed to resend invitation");
-			}
-
-			toast.success("Invitation resent!");
-		} catch (error) {
-			console.error("Error resending invitation:", error);
-			toast.error("Failed to resend invitation");
-		}
+		await new Promise((resolve) => setTimeout(resolve, 500));
+		toast.success("Invitation resent!");
 	};
 
 	const handleRevoke = async (id: string) => {
-		try {
-			const response = await fetch(`/api/invitations/${id}`, {
-				method: "DELETE",
-			});
-
-			if (!response.ok) {
-				throw new Error("Failed to revoke invitation");
-			}
-
-			setPendingInvites(pendingInvites.filter((invite) => invite.id !== id));
-			toast.success("Invitation revoked");
-		} catch (error) {
-			console.error("Error revoking invitation:", error);
-			toast.error("Failed to revoke invitation");
-		}
+		setPendingInvites(pendingInvites.filter((invite) => invite.id !== id));
+		toast.success("Invitation revoked");
 	};
 
 	const getPermissionSummary = () => {
@@ -231,12 +209,13 @@ export default function InviteTeamPage() {
 
 					<div className="grid grid-cols-1 lg:grid-cols-2 gap-8 w-full items-start">
 						<motion.div
-							className="flex flex-col gap-5 w-full max-w-[520px] mx-auto lg:mx-0 justify-self-end"
+							className="flex flex-col w-full max-w-[520px] mx-auto lg:mx-0 justify-self-end"
 							initial={{ opacity: 0, x: -20 }}
 							animate={{ opacity: 1, x: 0 }}
 							transition={{ duration: 0.5 }}
 						>
-							<form onSubmit={handleSubmit} className="flex flex-col gap-5">
+							<form id="invite-form" onSubmit={handleSubmit} className="flex flex-col">
+								<div className="max-h-[500px] overflow-y-auto pr-2 space-y-5 [&::-webkit-scrollbar]:w-1 [&::-webkit-scrollbar-track]:bg-transparent [&::-webkit-scrollbar-thumb]:bg-white/10 [&::-webkit-scrollbar-thumb]:rounded-full hover:[&::-webkit-scrollbar-thumb]:bg-white/20">
 								<motion.div
 									initial={{ opacity: 0, y: 10 }}
 									animate={{ opacity: 1, y: 0 }}
@@ -399,11 +378,13 @@ export default function InviteTeamPage() {
 										</PermissionToggle>
 									</div>
 								</motion.div>
+								</div>
 
 								<motion.div
 									initial={{ opacity: 0, y: 10 }}
 									animate={{ opacity: 1, y: 0 }}
 									transition={{ delay: 0.3 }}
+									className="mt-4"
 								>
 									<label className="text-[10px] uppercase font-bold text-gray-500 tracking-wider mb-2 block">
 										Summary
@@ -424,38 +405,6 @@ export default function InviteTeamPage() {
 									</div>
 								</motion.div>
 
-								<motion.div
-									className="pt-4 border-t border-white/5"
-									initial={{ opacity: 0, y: 10 }}
-									animate={{ opacity: 1, y: 0 }}
-									transition={{ delay: 0.4 }}
-								>
-									<div className="flex flex-col gap-3">
-										<div className="flex items-center gap-3">
-											<Button
-												variant="solid"
-												type="submit"
-												className="bg-violet-600 hover:bg-violet-700 shadow-glow hover:shadow-glow-hover flex-grow disabled:opacity-50 disabled:cursor-not-allowed"
-												arrowIcon={isSubmitting ? <LuLoader className="animate-spin" /> : <LuArrowRight />}
-												disabled={isSubmitting}
-											>
-												{isSubmitting ? "Sending" : "Send invites"}
-											</Button>
-											<Button
-												variant="outline"
-												type="button"
-												onClick={handleSkip}
-												showArrow={false}
-												className="border-white/10 hover:border-white/20"
-											>
-												Skip for now
-											</Button>
-										</div>
-										<p className="text-[11px] text-gray-500 text-center">
-											Invites are sent by email. Access activates after acceptance.
-										</p>
-									</div>
-								</motion.div>
 							</form>
 						</motion.div>
 
@@ -473,7 +422,7 @@ export default function InviteTeamPage() {
 								</h3>
 							</div>
 
-							<div className="flex flex-col h-full overflow-y-auto scrollbar-hide pr-1">
+							<div className="flex flex-col h-full overflow-y-auto pr-1 [&::-webkit-scrollbar]:w-1 [&::-webkit-scrollbar-track]:bg-transparent [&::-webkit-scrollbar-thumb]:bg-white/10 [&::-webkit-scrollbar-thumb]:rounded-full hover:[&::-webkit-scrollbar-thumb]:bg-white/20">
 								<div className="flex flex-col divide-y divide-white/5">
 									{pendingInvites.map((invite) => (
 										<PendingInviteCard
@@ -489,6 +438,54 @@ export default function InviteTeamPage() {
 							<div className="absolute bottom-0 right-0 w-full h-8 bg-gradient-to-t from-white/[0.03] to-transparent pointer-events-none z-10"></div>
 						</motion.div>
 					</div>
+
+					<motion.div
+						className="w-full max-w-2xl mx-auto mt-8"
+						initial={{ opacity: 0, y: 10 }}
+						animate={{ opacity: 1, y: 0 }}
+						transition={{ delay: 0.4 }}
+					>
+						<div className="flex flex-col gap-3">
+							<div className="flex items-center gap-3">
+								<Button
+									variant="solid"
+									type="button"
+									onClick={() => {
+										const form = document.getElementById('invite-form') as HTMLFormElement | null;
+										form?.requestSubmit();
+									}}
+									className="flex-1 bg-violet-600 hover:bg-violet-700 shadow-glow hover:shadow-glow-hover disabled:opacity-50 disabled:cursor-not-allowed"
+									showArrow={true}
+									arrowIcon={isSubmitting ? <LuLoader className="animate-spin" /> : <LuArrowRight />}
+									disabled={isSubmitting}
+								>
+									{isSubmitting ? "Sending" : "Send invites"}
+								</Button>
+								<Button
+									variant="outline"
+									type="button"
+									onClick={handleSkip}
+									showArrow={false}
+									className="flex-1 border-white/10 hover:border-white/20"
+								>
+									Skip for now
+								</Button>
+								<Button
+									variant="outline"
+									type="button"
+									onClick={handleFinish}
+									showArrow={true}
+									arrowIcon={<LuArrowRight />}
+									className="flex-1 border-white/10 hover:border-white/20"
+								>
+									Finish setup
+								</Button>
+							</div>
+							<p className="text-[11px] text-gray-500 text-center">
+								Invites are sent by email. Access activates after acceptance.
+							</p>
+						</div>
+					</motion.div>
 				</div>
 			</main>
 		</div>
