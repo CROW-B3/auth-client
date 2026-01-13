@@ -1,21 +1,20 @@
 "use client";
 
 import { useState } from "react";
-import { useRouter } from "next/navigation";
-import { AnimatedBackground, Button, Checkbox, Divider, Input, Navbar, NavLink, PageHeader } from "@b3-crow/ui-kit";
+import { AnimatedBackground, Button, Divider, Input, Navbar, NavLink, PageHeader } from "@b3-crow/ui-kit";
 import { LuArrowRight, LuLoader } from "react-icons/lu";
 import { GrGoogle } from "react-icons/gr";
 import { z } from "zod";
 import { motion } from "framer-motion";
 import toast from "react-hot-toast";
-import { signUpSchema, type SignUpFormData } from "@/lib/validations";
+import { signInSchema, type SignInFormData } from "@/lib/validations";
 import { type FormErrors } from "@/types";
-import { signIn, signUp } from "@/lib/auth-client";
+import { signIn } from "@/lib/auth-client";
 
-export default function SignUpPage() {
-	const router = useRouter();
-	const [errors, setErrors] = useState<FormErrors<SignUpFormData>>({});
+export default function LoginPage() {
+	const [errors, setErrors] = useState<FormErrors<SignInFormData>>({});
 	const [isSubmitting, setIsSubmitting] = useState(false);
+	const [isGoogleLoading, setIsGoogleLoading] = useState(false);
 
 	const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
 		e.preventDefault();
@@ -24,45 +23,35 @@ export default function SignUpPage() {
 
 		const formData = new FormData(e.currentTarget);
 		const formValues = Object.fromEntries(formData.entries());
-		const data = {
-			...formValues,
-			terms: formValues.terms === "on" ? "on" : "",
-		};
 
 		try {
-			const validatedData = signUpSchema.parse(data);
+			const validatedData = signInSchema.parse(formValues);
 
-			const { error } = await signUp.email({
+			const { error } = await signIn.email({
 				email: validatedData.email,
 				password: validatedData.password,
-				name: validatedData.fullname,
 			});
 
 			if (error) {
-				toast.error(error.message || "Failed to create account");
+				toast.error(error.message || "Invalid email or password");
 				return;
 			}
 
-			router.push("/organization");
-
+			const dashboardUrl = process.env.NEXT_PUBLIC_DASHBOARD_URL || "http://localhost:3002";
+			window.location.href = dashboardUrl;
 		} catch (error) {
 			if (error instanceof z.ZodError) {
-				const newErrors: FormErrors<SignUpFormData> = {};
-				const zodError = error as z.ZodError<SignUpFormData>;
+				const newErrors: FormErrors<SignInFormData> = {};
+				const zodError = error as z.ZodError<SignInFormData>;
 
 				zodError.issues.forEach((fieldError) => {
 					if (fieldError.path[0]) {
-						const fieldName = fieldError.path[0] as keyof SignUpFormData;
+						const fieldName = fieldError.path[0] as keyof SignInFormData;
 						newErrors[fieldName] = fieldError.message;
 					}
 				});
 				setErrors(newErrors);
-
-				if (newErrors.terms) {
-					toast.error(newErrors.terms);
-				} else if (zodError.issues.length > 0) {
-					toast.error("Please fix the errors in the form");
-				}
+				toast.error("Please fix the errors in the form");
 			} else {
 				toast.error("An unexpected error occurred");
 			}
@@ -71,13 +60,12 @@ export default function SignUpPage() {
 		}
 	};
 
-	const [isGoogleLoading, setIsGoogleLoading] = useState(false);
-
-	const handleGoogleSignup = async () => {
+	const handleGoogleLogin = async () => {
 		setIsGoogleLoading(true);
+		const dashboardUrl = process.env.NEXT_PUBLIC_DASHBOARD_URL || window.location.origin;
 		await signIn.social({
 			provider: "google",
-			callbackURL: `${window.location.origin}/organization`,
+			callbackURL: dashboardUrl,
 		});
 	};
 
@@ -88,17 +76,18 @@ export default function SignUpPage() {
 			<Navbar
 				logo={{ text: "CROW", src: "/favicon.webp", alt: "CROW Logo" }}
 				rightContent={
-				<span className="text-gray-500 flex items-center gap-2">
-					Already have an account? <NavLink href="/login">Log in</NavLink>
-				</span>}
+					<span className="text-gray-500 flex items-center gap-2">
+						Don&apos;t have an account? <NavLink href="/signup">Sign up</NavLink>
+					</span>
+				}
 			/>
 
 			<main className="flex-grow flex items-center justify-center relative z-10 w-full px-4 py-8">
 				<div className="w-full max-w-[380px] flex flex-col items-center text-center">
 					<PageHeader
-						label="Sign Up"
-						title="Create your CROW account."
-						description="Start unifying Web, CCTV, and Social signals."
+						label="Log In"
+						title="Welcome back."
+						description="Sign in to access your CROW dashboard."
 					/>
 
 					<motion.form
@@ -126,17 +115,6 @@ export default function SignUpPage() {
 						>
 							<motion.div variants={{ hidden: { opacity: 0, y: 10 }, visible: { opacity: 1, y: 0 } }}>
 								<Input
-									id="fullname"
-									name="fullname"
-									type="text"
-									placeholder="Full name"
-									aria-label="Full name"
-									autoComplete="name"
-									error={errors.fullname}
-								/>
-							</motion.div>
-							<motion.div variants={{ hidden: { opacity: 0, y: 10 }, visible: { opacity: 1, y: 0 } }}>
-								<Input
 									id="email"
 									name="email"
 									type="email"
@@ -151,51 +129,32 @@ export default function SignUpPage() {
 									id="password"
 									name="password"
 									type="password"
-									placeholder="Create password"
-									aria-label="Create password"
-									autoComplete="new-password"
+									placeholder="Password"
+									aria-label="Password"
+									autoComplete="current-password"
 									error={errors.password}
 								/>
 							</motion.div>
 						</motion.div>
 
 						<motion.div
-							className="px-1"
-							initial={{ opacity: 0, y: 10 }}
-							animate={{ opacity: 1, y: 0 }}
-							transition={{ duration: 0.5, delay: 0.6 }}
+							className="text-right"
+							initial={{ opacity: 0 }}
+							animate={{ opacity: 1 }}
+							transition={{ duration: 0.5, delay: 0.5 }}
 						>
-							<Checkbox
-								id="terms"
-								name="terms"
-								label={
-									<>
-										I agree to the{" "}
-										<a
-											href="/terms"
-											target="_blank"
-											className="text-gray-400 hover:text-white transition-colors underline decoration-gray-700 underline-offset-2"
-										>
-											Terms
-										</a>{" "}
-										and{" "}
-										<a
-											href="/privacy"
-											target="_blank"
-											className="text-gray-400 hover:text-white transition-colors underline decoration-gray-700 underline-offset-2"
-										>
-											Privacy Policy
-										</a>
-										.
-									</>
-								}
-							/>
+							<a
+								href="/forgot-password"
+								className="text-sm text-gray-500 hover:text-white transition-colors"
+							>
+								Forgot password?
+							</a>
 						</motion.div>
 
 						<motion.div
 							initial={{ opacity: 0, y: 10 }}
 							animate={{ opacity: 1, y: 0 }}
-							transition={{ duration: 0.5, delay: 0.7 }}
+							transition={{ duration: 0.5, delay: 0.6 }}
 						>
 							<Button
 								variant="solid"
@@ -205,14 +164,14 @@ export default function SignUpPage() {
 								arrowIcon={isSubmitting ? <LuLoader className="animate-spin" /> : <LuArrowRight />}
 								disabled={isSubmitting}
 							>
-								{isSubmitting ? "Setting up" : "Continue"}
+								{isSubmitting ? "Signing in" : "Sign in"}
 							</Button>
 						</motion.div>
 
 						<motion.div
 							initial={{ opacity: 0 }}
 							animate={{ opacity: 1 }}
-							transition={{ duration: 0.5, delay: 0.8 }}
+							transition={{ duration: 0.5, delay: 0.7 }}
 						>
 							<Divider text="Or" />
 						</motion.div>
@@ -220,12 +179,12 @@ export default function SignUpPage() {
 						<motion.div
 							initial={{ opacity: 0, y: 10 }}
 							animate={{ opacity: 1, y: 0 }}
-							transition={{ duration: 0.5, delay: 0.9 }}
+							transition={{ duration: 0.5, delay: 0.8 }}
 						>
 							<Button
 								variant="outline"
 								type="button"
-								onClick={handleGoogleSignup}
+								onClick={handleGoogleLogin}
 								showArrow={false}
 								disabled={isGoogleLoading}
 								className="w-full border-white/10 hover:bg-white/5 hover:border-white/20 disabled:opacity-50 disabled:cursor-not-allowed"
