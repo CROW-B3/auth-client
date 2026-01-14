@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { AnimatedBackground, Button, Input, Navbar, NavLink, PageHeader, Footer } from "@b3-crow/ui-kit";
 import { LuArrowRight, LuLoader } from "react-icons/lu";
@@ -11,7 +11,7 @@ import { createOrganizationSchema, type CreateOrganizationFormData } from "@/lib
 import { type FormErrors } from "@/types";
 import { organization, getSession } from "@/lib/auth-client";
 import { useOnboardingStore } from "@/stores/onboarding-store";
-import { useSubmitOrganization } from "@/hooks/use-onboarding";
+import { useSubmitOrganization, useStartOnboarding } from "@/hooks/use-onboarding";
 
 const generateSlug = (name: string): string => {
 	return name
@@ -26,9 +26,40 @@ export default function CreateOrganizationPage() {
 	const router = useRouter();
 	const [errors, setErrors] = useState<FormErrors<CreateOrganizationFormData>>({});
 	const [isSubmitting, setIsSubmitting] = useState(false);
+	const [isInitializing, setIsInitializing] = useState(true);
 
 	const { onboardingId, setOrganizationName, setOrganizationSlug, setBetterAuthOrgId } = useOnboardingStore();
 	const submitOrganization = useSubmitOrganization();
+	const startOnboarding = useStartOnboarding();
+
+	useEffect(() => {
+		if (onboardingId) {
+			setIsInitializing(false);
+			return;
+		}
+
+		const initializeOnboarding = async () => {
+			const session = await getSession();
+			if (!session?.data?.user?.id) {
+				router.push("/signup");
+				return;
+			}
+
+			try {
+				const result = await startOnboarding.mutateAsync(session.data.user.id);
+				if (result.redirect) {
+					router.push(result.redirect);
+					return;
+				}
+				setIsInitializing(false);
+			} catch {
+				toast.error("Failed to initialize onboarding");
+				router.push("/signup");
+			}
+		};
+
+		initializeOnboarding();
+	}, []);
 
 	const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
 		e.preventDefault();
@@ -99,6 +130,17 @@ export default function CreateOrganizationPage() {
 			setIsSubmitting(false);
 		}
 	};
+
+	if (isInitializing) {
+		return (
+			<div className="min-h-screen flex flex-col antialiased selection:bg-violet-500/30 selection:text-violet-200 overflow-x-hidden relative">
+				<AnimatedBackground />
+				<div className="flex-grow flex items-center justify-center">
+					<LuLoader className="w-8 h-8 animate-spin text-violet-500" />
+				</div>
+			</div>
+		);
+	}
 
 	return (
 		<div className="min-h-screen flex flex-col antialiased selection:bg-violet-500/30 selection:text-violet-200 overflow-x-hidden relative">
