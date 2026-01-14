@@ -9,11 +9,26 @@ import { motion } from "framer-motion";
 import toast from "react-hot-toast";
 import { createOrganizationSchema, type CreateOrganizationFormData } from "@/lib/validations";
 import { type FormErrors } from "@/types";
+import { organization, getSession } from "@/lib/auth-client";
+import { useOnboardingStore } from "@/stores/onboarding-store";
+import { useSubmitOrganization } from "@/hooks/use-onboarding";
+
+const generateSlug = (name: string): string => {
+	return name
+		.toLowerCase()
+		.replace(/[^a-z0-9\s-]/g, "")
+		.replace(/\s+/g, "-")
+		.replace(/-+/g, "-")
+		.trim();
+};
 
 export default function CreateOrganizationPage() {
 	const router = useRouter();
 	const [errors, setErrors] = useState<FormErrors<CreateOrganizationFormData>>({});
 	const [isSubmitting, setIsSubmitting] = useState(false);
+
+	const { onboardingId, setOrganizationName, setOrganizationSlug, setBetterAuthOrgId } = useOnboardingStore();
+	const submitOrganization = useSubmitOrganization();
 
 	const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
 		e.preventDefault();
@@ -25,9 +40,40 @@ export default function CreateOrganizationPage() {
 
 		try {
 			const validatedData = createOrganizationSchema.parse(formValues);
-			console.log("Validated data:", validatedData);
+			const slug = generateSlug(validatedData.organizationName);
 
-			await new Promise((resolve) => setTimeout(resolve, 2000));
+			const session = await getSession();
+			if (!session?.data?.user?.id) {
+				toast.error("Session expired. Please sign in again.");
+				router.push("/signup");
+				return;
+			}
+
+			const { data: org, error: orgError } = await organization.create({
+				name: validatedData.organizationName,
+				slug,
+			});
+
+			if (orgError || !org) {
+				toast.error(orgError?.message || "Failed to create organization");
+				return;
+			}
+
+			setOrganizationName(validatedData.organizationName);
+			setOrganizationSlug(slug);
+			setBetterAuthOrgId(org.id);
+
+			if (onboardingId) {
+				await submitOrganization.mutateAsync({
+					onboardingId,
+					input: {
+						organizationName: validatedData.organizationName,
+						slug,
+						betterAuthOrgId: org.id,
+						betterAuthUserId: session.data.user.id,
+					},
+				});
+			}
 
 			router.push("/choose-plan");
 

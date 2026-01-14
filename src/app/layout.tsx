@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Sora } from "next/font/google";
 import { Toaster } from "react-hot-toast";
+import { QueryProvider } from "@/providers/query-provider";
 import "./globals.css";
 import '@b3-crow/ui-kit/styles.css';
 
@@ -30,31 +31,33 @@ export default function RootLayout({
 				<link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
 			</head>
 			<body className={`${sora.variable} antialiased`}>
-				<Toaster
-					position="bottom-right"
-					toastOptions={{
-						duration: 4000,
-						style: {
-							background: "#1a1a1a",
-							color: "#fff",
-							border: "1px solid rgba(139, 92, 246, 0.3)",
-							borderRadius: "8px",
-						},
-						success: {
-							iconTheme: {
-								primary: "#8b5cf6",
-								secondary: "#fff",
+				<QueryProvider>
+					<Toaster
+						position="bottom-right"
+						toastOptions={{
+							duration: 4000,
+							style: {
+								background: "#1a1a1a",
+								color: "#fff",
+								border: "1px solid rgba(139, 92, 246, 0.3)",
+								borderRadius: "8px",
 							},
-						},
-						error: {
-							iconTheme: {
-								primary: "#ef4444",
-								secondary: "#fff",
+							success: {
+								iconTheme: {
+									primary: "#8b5cf6",
+									secondary: "#fff",
+								},
 							},
-						},
-					}}
-				/>
-				{children}
+							error: {
+								iconTheme: {
+									primary: "#ef4444",
+									secondary: "#fff",
+								},
+							},
+						}}
+					/>
+					{children}
+				</QueryProvider>
 			</body>
 		</html>
 	);

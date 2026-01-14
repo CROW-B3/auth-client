@@ -1,3 +1,7 @@
+// TODO: Move this to a dedicated billing/payments service (core-billing-service?)
+// This should not live in auth-client long-term - stripe checkout, subscriptions,
+// and payment handling should be centralized in its own microservice
+
 import { NextResponse } from 'next/server';
 import Stripe from 'stripe';
 import { STRIPE_PRODUCTS, STRIPE_PRICES } from '@/config/stripe';
