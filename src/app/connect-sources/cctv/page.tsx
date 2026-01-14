@@ -5,6 +5,8 @@ import { useRouter } from "next/navigation";
 import { AnimatedBackground, Navbar, PageHeader, Button, Input, Select, RunAgentCard } from "@b3-crow/ui-kit";
 import { motion } from "framer-motion";
 import toast from "react-hot-toast";
+import { useOnboardingStore } from "@/stores/onboarding-store";
+import { useSubmitSource } from "@/hooks/use-onboarding";
 
 export default function ConnectCCTVPage() {
 	const router = useRouter();
@@ -12,6 +14,9 @@ export default function ConnectCCTVPage() {
 	const [region, setRegion] = useState("");
 	const [cameraGroup, setCameraGroup] = useState("");
 	const [isConnected, setIsConnected] = useState(false);
+
+	const { onboardingId, setConnectionStatus } = useOnboardingStore();
+	const submitSource = useSubmitSource();
 
 	const sanitizeShellArg = (value: string): string => {
 		return value.replace(/(["\\$`])/g, "\\$1");
@@ -36,18 +41,32 @@ export default function ConnectCCTVPage() {
 		setIsConnected(true);
 	};
 
-	const handleContinue = () => {
+	const handleContinue = async () => {
 		if (!isConnected) {
 			toast.error("Please verify connection first");
 			return;
 		}
-		const savedStatus = localStorage.getItem("crow_connection_status");
-		const statusMap = savedStatus ? JSON.parse(savedStatus) : {};
-		statusMap.cctv = "connected";
-		localStorage.setItem("crow_connection_status", JSON.stringify(statusMap));
 
-		toast.success("CCTV source connected!");
-		router.push("/connect-sources");
+		try {
+			if (onboardingId) {
+				await submitSource.mutateAsync({
+					onboardingId,
+					input: { sourceType: "cctv", apiKeyId: `cctv-${siteName}-${region}` },
+				});
+			}
+
+			setConnectionStatus("cctv", "connected");
+
+			const savedStatus = localStorage.getItem("crow_connection_status");
+			const statusMap = savedStatus ? JSON.parse(savedStatus) : {};
+			statusMap.cctv = "connected";
+			localStorage.setItem("crow_connection_status", JSON.stringify(statusMap));
+
+			toast.success("CCTV source connected!");
+			router.push("/connect-sources");
+		} catch {
+			toast.error("Failed to connect. Please try again.");
+		}
 	};
 
 	return (
@@ -125,14 +144,14 @@ export default function ConnectCCTVPage() {
 							<Button
 								variant="solid"
 								onClick={handleContinue}
-								disabled={!isConnected}
+								disabled={!isConnected || submitSource.isPending}
 								className={`w-full text-sm ${
-									isConnected
+									isConnected && !submitSource.isPending
 										? "bg-violet-600 hover:bg-violet-700 shadow-glow hover:shadow-glow-hover"
 										: "bg-white/5 border border-white/5 text-gray-600 cursor-not-allowed"
 								}`}
 							>
-								Continue
+								{submitSource.isPending ? "Connecting..." : "Continue"}
 							</Button>
 						</div>
 					</motion.div>
