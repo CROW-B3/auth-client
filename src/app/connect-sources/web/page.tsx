@@ -99,13 +99,12 @@ export default function ConnectWebPage() {
 								onChange={setPackageManager}
 							/>
 						</div>
-						<CodeBlock code={WEB_SDK_INSTALL_COMMANDS[packageManager]} showCopy={true} />
+						<CodeBlock code={WEB_SDK_INSTALL_COMMANDS[packageManager]} language="bash" showCopy={true} />
 					</div>
 
-					{/* Initialize Section */}
 					<div className="space-y-2">
 						<label className="text-xs font-medium text-gray-200 block">Initialize</label>
-						<CodeBlock code={initCode} />
+						<CodeBlock code={initCode} language="typescript" />
 						<p className="text-xs text-gray-500 px-1">Initialize once at app startup.</p>
 					</div>
 
