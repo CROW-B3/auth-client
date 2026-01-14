@@ -8,6 +8,8 @@ import { motion } from "framer-motion";
 import toast from "react-hot-toast";
 import { z } from "zod";
 import { inviteTeamSchema, type PendingInvite } from "@/lib/validations";
+import { useOnboardingStore } from "@/stores/onboarding-store";
+import { useSubmitTeam, useCompleteOnboarding } from "@/hooks/use-onboarding";
 
 export default function InviteTeamPage() {
 	const router = useRouter();
@@ -19,11 +21,13 @@ export default function InviteTeamPage() {
 	const [interactionsEnabled, setInteractionsEnabled] = useState(false);
 	const [patternsEnabled, setPatternsEnabled] = useState(false);
 	const [teamManagementEnabled, setTeamManagementEnabled] = useState(false);
-	const [apiKeysEnabled, setApiKeysEnabled] = useState(false);
-	const [apiKeyInteractions, setApiKeyInteractions] = useState(false);
-	const [apiKeyPatterns, setApiKeyPatterns] = useState(false);
+	const [apiKeyManagementEnabled, setApiKeyManagementEnabled] = useState(false);
 	const [pendingInvites, setPendingInvites] = useState<PendingInvite[]>([]);
 	const [isLoadingInvites, setIsLoadingInvites] = useState(true);
+
+	const { onboardingId } = useOnboardingStore();
+	const submitTeam = useSubmitTeam();
+	const completeOnboarding = useCompleteOnboarding();
 
 	useEffect(() => {
 		setIsLoadingInvites(false);
@@ -64,14 +68,8 @@ export default function InviteTeamPage() {
 				permissions.teamManagement = teamManagementEnabled;
 			}
 
-			if (apiKeysEnabled) {
-				permissions.apiKeys = {
-					enabled: apiKeysEnabled,
-					scopes: {
-						interactions: apiKeyInteractions,
-						patterns: apiKeyPatterns,
-					},
-				};
+			if (apiKeyManagementEnabled !== undefined) {
+				permissions.apiKeyManagement = apiKeyManagementEnabled;
 			}
 
 			const formData = {
@@ -105,15 +103,8 @@ export default function InviteTeamPage() {
 					permissions.teamManagement = validatedData.permissions.teamManagement;
 				}
 
-				if (validatedData.permissions?.apiKeys) {
-					const scopes: string[] = [];
-					if (validatedData.permissions.apiKeys.scopes.interactions) {
-						scopes.push('interactions');
-					}
-					if (validatedData.permissions.apiKeys.scopes.patterns) {
-						scopes.push('patterns');
-					}
-					permissions.apiKeys = { scopes };
+				if (validatedData.permissions?.apiKeyManagement !== undefined) {
+					permissions.apiKeyManagement = validatedData.permissions.apiKeyManagement;
 				}
 
 				return {
@@ -146,12 +137,28 @@ export default function InviteTeamPage() {
 		}
 	};
 
-	const handleSkip = () => {
-		router.push("/success");
+	const handleSkip = async () => {
+		try {
+			if (onboardingId) {
+				await submitTeam.mutateAsync(onboardingId);
+				await completeOnboarding.mutateAsync(onboardingId);
+			}
+			router.push("/success");
+		} catch {
+			router.push("/success");
+		}
 	};
 
-	const handleFinish = () => {
-		router.push("/success");
+	const handleFinish = async () => {
+		try {
+			if (onboardingId) {
+				await submitTeam.mutateAsync(onboardingId);
+				await completeOnboarding.mutateAsync(onboardingId);
+			}
+			router.push("/success");
+		} catch {
+			router.push("/success");
+		}
 	};
 
 	const handleResend = async (id: string) => {
@@ -176,15 +183,7 @@ export default function InviteTeamPage() {
 		if (interactionsEnabled) tags.push("Interactions");
 		if (patternsEnabled) tags.push("Patterns");
 		if (teamManagementEnabled) tags.push("Team management");
-
-		if (apiKeysEnabled) {
-			const scopes: string[] = [];
-			if (apiKeyInteractions) scopes.push("Interactions");
-			if (apiKeyPatterns) scopes.push("Patterns");
-			if (scopes.length > 0) {
-				tags.push(`API keys: ${scopes.join(", ")}`);
-			}
-		}
+		if (apiKeyManagementEnabled) tags.push("API key management");
 
 		return tags;
 	};
@@ -334,48 +333,11 @@ export default function InviteTeamPage() {
 
 										<PermissionToggle
 											icon={<LuKey className="text-[18px]" />}
-											title="API keys"
-											description="Create and manage API keys."
-											enabled={apiKeysEnabled}
-											onToggle={setApiKeysEnabled}
-											expandable={true}
-											expanded={apiKeysEnabled}
-											highlighted={apiKeysEnabled}
-										>
-											<div className="mt-2 pl-11">
-												<label className="text-[10px] font-medium text-gray-400 mb-2 block">
-													Key scopes
-												</label>
-												<div className="flex gap-4">
-													<div className="flex items-center gap-2">
-														<label className="relative inline-flex items-center cursor-pointer scale-75 origin-left">
-															<input
-																type="checkbox"
-																checked={apiKeyInteractions}
-																onChange={(e) => setApiKeyInteractions(e.target.checked)}
-																className="sr-only peer"
-																aria-label="Enable API key access for Interactions"
-															/>
-															<div className="w-9 h-5 bg-gray-700 peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-violet-500 peer-focus:ring-offset-2 peer-focus:ring-offset-gray-900 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-violet-600"></div>
-														</label>
-														<span className="text-[10px] text-gray-300">Interactions</span>
-													</div>
-													<div className="flex items-center gap-2">
-														<label className="relative inline-flex items-center cursor-pointer scale-75 origin-left">
-															<input
-																type="checkbox"
-																checked={apiKeyPatterns}
-																onChange={(e) => setApiKeyPatterns(e.target.checked)}
-																className="sr-only peer"
-																aria-label="Enable API key access for Patterns"
-															/>
-															<div className="w-9 h-5 bg-gray-700 peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-violet-500 peer-focus:ring-offset-2 peer-focus:ring-offset-gray-900 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-violet-600"></div>
-														</label>
-														<span className="text-[10px] text-gray-300">Patterns</span>
-													</div>
-												</div>
-											</div>
-										</PermissionToggle>
+											title="API key management"
+											description="Create and manage API keys with all scopes."
+											enabled={apiKeyManagementEnabled}
+											onToggle={setApiKeyManagementEnabled}
+										/>
 									</div>
 								</motion.div>
 								</div>

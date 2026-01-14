@@ -10,12 +10,14 @@ import { motion } from "framer-motion";
 import toast from "react-hot-toast";
 import { signUpSchema, type SignUpFormData } from "@/lib/validations";
 import { type FormErrors } from "@/types";
-import { signIn, signUp } from "@/lib/auth-client";
+import { signIn, signUp, getSession } from "@/lib/auth-client";
+import { useStartOnboarding } from "@/hooks/use-onboarding";
 
 export default function SignUpPage() {
 	const router = useRouter();
 	const [errors, setErrors] = useState<FormErrors<SignUpFormData>>({});
 	const [isSubmitting, setIsSubmitting] = useState(false);
+	const startOnboarding = useStartOnboarding();
 
 	const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
 		e.preventDefault();
@@ -40,6 +42,19 @@ export default function SignUpPage() {
 
 			if (error) {
 				toast.error(error.message || "Failed to create account");
+				return;
+			}
+
+			const session = await getSession();
+			if (!session?.data?.user?.id) {
+				toast.error("Failed to get session");
+				return;
+			}
+
+			const result = await startOnboarding.mutateAsync(session.data.user.id);
+
+			if (result.redirect) {
+				router.push(result.redirect);
 				return;
 			}
 

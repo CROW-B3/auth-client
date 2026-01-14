@@ -31,22 +31,7 @@ export const inviteTeamSchema = z.object({
 		interactions: z.boolean().optional(),
 		patterns: z.boolean().optional(),
 		teamManagement: z.boolean().optional(),
-		apiKeys: z
-			.object({
-				enabled: z.boolean(),
-				scopes: z.object({
-					interactions: z.boolean(),
-					patterns: z.boolean(),
-				}),
-			})
-			.refine(
-				(apiKeys) => !apiKeys.enabled || apiKeys.scopes.interactions || apiKeys.scopes.patterns,
-				{
-					message: "At least one scope required when API keys are enabled",
-					path: ["scopes"],
-				}
-			)
-			.optional(),
+		apiKeyManagement: z.boolean().optional(),
 	}),
 });
 
@@ -81,9 +66,7 @@ export interface PendingInvite {
 		interactions?: boolean;
 		patterns?: boolean;
 		teamManagement?: boolean;
-		apiKeys?: {
-			scopes: string[];
-		};
+		apiKeyManagement?: boolean;
 	};
 	sentAt: Date;
 }
