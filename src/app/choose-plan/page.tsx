@@ -1,6 +1,5 @@
 "use client";
 
-import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { motion } from "framer-motion";
 import {
@@ -18,27 +17,23 @@ import toast from "react-hot-toast";
 import { LuArrowRight, LuLoader } from "react-icons/lu";
 import { PLANS, type PlanType, type BillingPeriod } from "@/config/plans";
 import { getPricePerModule } from "@/lib/pricing";
-import { cn } from "@/lib/cn";
+import { useOnboardingStore } from "@/stores/onboarding-store";
+import { useSubmitPlan, useCreateCheckoutSession, useOnboardingById } from "@/hooks/use-onboarding";
 
 export default function ChoosePlanPage() {
 	const router = useRouter();
-	const [selectedPlans, setSelectedPlans] = useState<PlanType[]>([]);
-	const [billing, setBilling] = useState<BillingPeriod>("annual");
-	const [autoScale, setAutoScale] = useState(false);
-	const [isLoading, setIsLoading] = useState(false);
+	const { selectedPlans, billingPeriod, autoScale, onboardingId, togglePlan, setBillingPeriod, setAutoScale } = useOnboardingStore();
+	const submitPlan = useSubmitPlan();
+	const createCheckoutSession = useCreateCheckoutSession();
+	const { data: onboarding } = useOnboardingById(onboardingId);
 
 	const handlePlanToggle = (plan: PlanType, checked: boolean) => {
-		if (checked) {
-			if (selectedPlans.length >= 3) {
-				toast.error("Maximum 3 modules allowed");
-				return;
-			}
-			setSelectedPlans((prev) => [...prev, plan]);
-			toast.success(`${plan.toUpperCase()} module added!`);
-		} else {
-			setSelectedPlans((prev) => prev.filter((p) => p !== plan));
-			toast.success(`${plan.toUpperCase()} module removed!`);
+		if (checked && selectedPlans.length >= 3) {
+			toast.error("Maximum 3 modules allowed");
+			return;
 		}
+		togglePlan(plan);
+		toast.success(`${plan.toUpperCase()} module ${checked ? "added" : "removed"}!`);
 	};
 
 	const handleProceedToPayment = async () => {
@@ -47,31 +42,41 @@ export default function ChoosePlanPage() {
 			return;
 		}
 
-		setIsLoading(true);
+		if (!onboardingId) {
+			toast.error("Onboarding session not found");
+			return;
+		}
 
 		try {
-			const response = await fetch('/api/stripe/checkout', {
-				method: 'POST',
-				headers: { 'Content-Type': 'application/json' },
-				body: JSON.stringify({
-					plans: selectedPlans,
-					billing,
-					autoScale,
-				}),
+			const updatedOnboarding = await submitPlan.mutateAsync({
+				onboardingId,
+				input: {
+					modules: {
+						web: selectedPlans.includes("web"),
+						cctv: selectedPlans.includes("cctv"),
+						social: selectedPlans.includes("social"),
+					},
+					payAsYouGo: autoScale,
+					billingPeriod,
+				},
 			});
 
-			const data = await response.json();
-
-			if (!response.ok) {
-				throw new Error(data.error || 'Failed to create checkout session');
+			if (!updatedOnboarding.billingBuilderId) {
+				throw new Error("Billing builder not found");
 			}
 
-			if (data.url) {
-				window.location.href = data.url;
+			const baseUrl = process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3001";
+			const checkoutResult = await createCheckoutSession.mutateAsync({
+				billingBuilderId: updatedOnboarding.billingBuilderId,
+				successUrl: `${baseUrl}/checkout/success?session_id={CHECKOUT_SESSION_ID}`,
+				cancelUrl: `${baseUrl}/choose-plan`,
+			});
+
+			if (checkoutResult.url) {
+				window.location.href = checkoutResult.url;
 			}
 		} catch (error) {
-			toast.error(error instanceof Error ? error.message : 'Something went wrong');
-			setIsLoading(false);
+			toast.error(error instanceof Error ? error.message : "Something went wrong");
 		}
 	};
 
@@ -108,8 +113,8 @@ You can change this later."
 							{ label: "Monthly", value: "monthly" },
 							{ label: "Annual", value: "annual" },
 						]}
-						defaultValue="annual"
-						onChange={setBilling}
+						defaultValue={billingPeriod}
+						onChange={(value) => setBillingPeriod(value as BillingPeriod)}
 						label="Billing"
 						description="Annual includes a discount."
 					/>
@@ -134,7 +139,7 @@ You can change this later."
 									onCheckboxChange={(checked) => handlePlanToggle(plan.type, checked)}
 									header={plan.header}
 									price={{
-										amount: `$${getPricePerModule(billing)}`,
+										amount: `$${getPricePerModule(billingPeriod)}`,
 										period: "mo",
 									}}
 									featuresTitle={plan.featuresTitle}
@@ -188,13 +193,13 @@ You can change this later."
 						]}
 						total={{
 							amount: selectedPlans.length > 0
-								? `$${selectedPlans.length * (billing === "annual" ? 50 : 60)}`
+								? `$${selectedPlans.length * (billingPeriod === "annual" ? 50 : 60)}`
 								: "$—",
 							period: "mo",
 						}}
 						primaryAction={{
-							text: "Continue to checkout",
-							icon: isLoading ? (
+							text: submitPlan.isPending || createCheckoutSession.isPending ? "Processing..." : "Continue to checkout",
+							icon: submitPlan.isPending || createCheckoutSession.isPending ? (
 								<LuLoader className="w-4 h-4 animate-spin" />
 							) : (
 								<LuArrowRight className="w-4 h-4" />

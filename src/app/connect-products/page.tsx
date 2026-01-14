@@ -6,6 +6,8 @@ import { AnimatedBackground, Navbar, PageHeader, Button, Input } from "@b3-crow/
 import { LuLink, LuUpload, LuFile, LuX, LuArrowRight, LuSkipForward, LuCheck } from "react-icons/lu";
 import { motion } from "framer-motion";
 import toast from "react-hot-toast";
+import { useOnboardingStore } from "@/stores/onboarding-store";
+import { useSubmitProducts } from "@/hooks/use-onboarding";
 
 type UploadMethod = "url" | "file" | null;
 
@@ -15,8 +17,10 @@ export default function ConnectProductsPage() {
 	const [activeMethod, setActiveMethod] = useState<UploadMethod>(null);
 	const [feedUrl, setFeedUrl] = useState("");
 	const [uploadedFile, setUploadedFile] = useState<File | null>(null);
-	const [isSubmitting, setIsSubmitting] = useState(false);
 	const [urlError, setUrlError] = useState("");
+
+	const { onboardingId } = useOnboardingStore();
+	const submitProducts = useSubmitProducts();
 
 	const validateUrl = (url: string): boolean => {
 		if (!url.trim()) {
@@ -68,6 +72,15 @@ export default function ConnectProductsPage() {
 		}
 	};
 
+	const readFileContent = (file: File): Promise<string> => {
+		return new Promise((resolve, reject) => {
+			const reader = new FileReader();
+			reader.onload = () => resolve(reader.result as string);
+			reader.onerror = () => reject(new Error("Failed to read file"));
+			reader.readAsText(file);
+		});
+	};
+
 	const handleContinue = async () => {
 		if (!activeMethod) {
 			toast.error("Please provide a product feed URL or upload a file");
@@ -78,23 +91,32 @@ export default function ConnectProductsPage() {
 			return;
 		}
 
-		setIsSubmitting(true);
-
 		try {
-			await new Promise((resolve) => setTimeout(resolve, 2000));
+			if (onboardingId) {
+				let sourceType: "url" | "csv" | "json";
+				let sourceValue: string;
 
-			localStorage.setItem("crow_products_connected", JSON.stringify({
-				method: activeMethod,
-				...(activeMethod === "url" ? { url: feedUrl } : { fileName: uploadedFile?.name }),
-				connectedAt: new Date().toISOString(),
-			}));
+				if (activeMethod === "url") {
+					sourceType = "url";
+					sourceValue = feedUrl;
+				} else if (uploadedFile) {
+					sourceType = uploadedFile.name.endsWith(".csv") ? "csv" : "json";
+					sourceValue = await readFileContent(uploadedFile);
+				} else {
+					toast.error("No file selected");
+					return;
+				}
+
+				await submitProducts.mutateAsync({
+					onboardingId,
+					input: { sourceType, sourceValue },
+				});
+			}
 
 			toast.success("Products connected successfully!");
 			router.push("/connect-sources");
 		} catch {
 			toast.error("Failed to connect products. Please try again.");
-		} finally {
-			setIsSubmitting(false);
 		}
 	};
 
@@ -235,9 +257,9 @@ export default function ConnectProductsPage() {
 						className="w-full bg-violet-600 hover:bg-violet-700 shadow-glow hover:shadow-glow-hover disabled:opacity-50"
 						arrowIcon={<LuArrowRight />}
 						onClick={handleContinue}
-						disabled={isSubmitting}
+						disabled={submitProducts.isPending}
 					>
-						{isSubmitting ? "Connecting..." : "Continue"}
+						{submitProducts.isPending ? "Connecting..." : "Continue"}
 					</Button>
 
 					<Button
@@ -245,7 +267,7 @@ export default function ConnectProductsPage() {
 						className="w-full text-gray-500 hover:text-white"
 						arrowIcon={<LuSkipForward />}
 						onClick={handleSkip}
-						disabled={isSubmitting}
+						disabled={submitProducts.isPending}
 					>
 						Skip for now
 					</Button>
