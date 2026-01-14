@@ -7,6 +7,8 @@ import { motion } from "framer-motion";
 import { FaXTwitter, FaReddit, FaInstagram, FaTiktok } from "react-icons/fa6";
 import { HiNewspaper } from "react-icons/hi2";
 import toast from "react-hot-toast";
+import { useOnboardingStore } from "@/stores/onboarding-store";
+import { useSubmitSource } from "@/hooks/use-onboarding";
 
 export default function ConnectSocialPage() {
 	const router = useRouter();
@@ -28,15 +30,30 @@ export default function ConnectSocialPage() {
 		news: true,
 	});
 
+	const { onboardingId, setConnectionStatus } = useOnboardingStore();
+	const submitSource = useSubmitSource();
 
-	const handleStartSync = () => {
-		const savedStatus = localStorage.getItem("crow_connection_status");
-		const statusMap = savedStatus ? JSON.parse(savedStatus) : {};
-		statusMap.social = "connected";
-		localStorage.setItem("crow_connection_status", JSON.stringify(statusMap));
+	const handleStartSync = async () => {
+		try {
+			if (onboardingId) {
+				await submitSource.mutateAsync({
+					onboardingId,
+					input: { sourceType: "social", apiKeyId: `social-${Date.now()}` },
+				});
+			}
 
-		toast.success("Starting social sync...");
-		router.push("/connect-sources");
+			setConnectionStatus("social", "connected");
+
+			const savedStatus = localStorage.getItem("crow_connection_status");
+			const statusMap = savedStatus ? JSON.parse(savedStatus) : {};
+			statusMap.social = "connected";
+			localStorage.setItem("crow_connection_status", JSON.stringify(statusMap));
+
+			toast.success("Starting social sync...");
+			router.push("/connect-sources");
+		} catch {
+			toast.error("Failed to start sync. Please try again.");
+		}
 	};
 
 	const handleSkip = () => {
@@ -204,13 +221,15 @@ export default function ConnectSocialPage() {
 								variant="primary"
 								size="xl"
 								onClick={handleStartSync}
+								disabled={submitSource.isPending}
 							>
-								Start sync
+								{submitSource.isPending ? "Starting..." : "Start sync"}
 							</Button>
 							<Button
 								variant="ghost"
 								size="lg"
 								onClick={handleSkip}
+								disabled={submitSource.isPending}
 							>
 								Skip for now
 							</Button>

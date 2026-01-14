@@ -1,28 +1,70 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { AnimatedBackground, Navbar, PageHeader, Button, PackageManagerSelector, type PackageManager, CodeBlock, ApiKeyInput } from "@b3-crow/ui-kit";
 import { motion } from "framer-motion";
 import toast from "react-hot-toast";
 import { WEB_SDK_INSTALL_COMMANDS, getWebSDKInitCode } from "@/lib/constants/web-sdk";
+import { apiKey as apiKeyClient } from "@/lib/auth-client";
+import { useOnboardingStore } from "@/stores/onboarding-store";
+import { useSubmitSource } from "@/hooks/use-onboarding";
 
 export default function ConnectWebPage() {
 	const router = useRouter();
 	const [packageManager, setPackageManager] = useState<PackageManager>("bun");
+	const [generatedApiKey, setGeneratedApiKey] = useState<string | null>(null);
+	const [isGenerating, setIsGenerating] = useState(false);
 
-	// API key should be fetched from backend or environment variable
-	const apiKey = process.env.NEXT_PUBLIC_CROW_API_KEY || "crow_sk_demo_placeholder";
+	const { onboardingId, setConnectionStatus } = useOnboardingStore();
+	const submitSource = useSubmitSource();
+
+	useEffect(() => {
+		const generateKey = async () => {
+			setIsGenerating(true);
+			try {
+				const { data, error } = await apiKeyClient.create({
+					name: "CROW Web SDK Key",
+					expiresIn: 60 * 60 * 24 * 365,
+				});
+				if (error || !data) {
+					setGeneratedApiKey("crow_sk_demo_placeholder");
+					return;
+				}
+				setGeneratedApiKey(data.key);
+			} catch {
+				setGeneratedApiKey("crow_sk_demo_placeholder");
+			} finally {
+				setIsGenerating(false);
+			}
+		};
+		generateKey();
+	}, []);
+
+	const apiKey = generatedApiKey || "crow_sk_demo_placeholder";
 	const initCode = getWebSDKInitCode(apiKey);
 
-	const handleConnect = () => {
-		const savedStatus = localStorage.getItem("crow_connection_status");
-		const statusMap = savedStatus ? JSON.parse(savedStatus) : {};
-		statusMap.web = "connected";
-		localStorage.setItem("crow_connection_status", JSON.stringify(statusMap));
+	const handleConnect = async () => {
+		try {
+			if (onboardingId && generatedApiKey) {
+				await submitSource.mutateAsync({
+					onboardingId,
+					input: { sourceType: "web", apiKeyId: generatedApiKey },
+				});
+			}
 
-		toast.success("Web source connected!");
-		router.push("/connect-sources");
+			setConnectionStatus("web", "connected");
+
+			const savedStatus = localStorage.getItem("crow_connection_status");
+			const statusMap = savedStatus ? JSON.parse(savedStatus) : {};
+			statusMap.web = "connected";
+			localStorage.setItem("crow_connection_status", JSON.stringify(statusMap));
+
+			toast.success("Web source connected!");
+			router.push("/connect-sources");
+		} catch {
+			toast.error("Failed to connect. Please try again.");
+		}
 	};
 
 	return (
@@ -71,9 +113,10 @@ export default function ConnectWebPage() {
 						<Button
 							variant="solid"
 							onClick={handleConnect}
-							className="w-full bg-violet-600 hover:bg-violet-700 shadow-glow hover:shadow-glow-hover"
+							disabled={submitSource.isPending || isGenerating}
+							className="w-full bg-violet-600 hover:bg-violet-700 shadow-glow hover:shadow-glow-hover disabled:opacity-50"
 						>
-							Connect
+							{submitSource.isPending ? "Connecting..." : isGenerating ? "Generating key..." : "Connect"}
 						</Button>
 					</div>
 				</motion.div>
