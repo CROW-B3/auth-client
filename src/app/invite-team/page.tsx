@@ -10,6 +10,7 @@ import { z } from "zod";
 import { inviteTeamSchema, type PendingInvite } from "@/lib/validations";
 import { useOnboardingStore } from "@/stores/onboarding-store";
 import { useSubmitTeam, useCompleteOnboarding } from "@/hooks/use-onboarding";
+import { useCheckEmails } from "@/hooks/use-users";
 
 export default function InviteTeamPage() {
 	const router = useRouter();
@@ -25,9 +26,37 @@ export default function InviteTeamPage() {
 	const [pendingInvites, setPendingInvites] = useState<PendingInvite[]>([]);
 	const [isLoadingInvites, setIsLoadingInvites] = useState(true);
 
-	const { onboardingId } = useOnboardingStore();
+	const { onboardingId, betterAuthOrgId } = useOnboardingStore();
 	const submitTeam = useSubmitTeam();
 	const completeOnboarding = useCompleteOnboarding();
+	const checkEmails = useCheckEmails();
+
+	const handleEmailsChange = async (newEmails: string[]) => {
+		const addedEmails = newEmails.filter(email => !emails.includes(email));
+
+		if (addedEmails.length > 0 && betterAuthOrgId) {
+			try {
+				const result = await checkEmails.mutateAsync({
+					emails: addedEmails,
+					organizationId: betterAuthOrgId
+				});
+
+				if (result.existingEmails.length > 0) {
+					const existingList = result.existingEmails.join(", ");
+					toast.error(`These emails are already users: ${existingList}`);
+					const filteredEmails = newEmails.filter(
+						email => !result.existingEmails.includes(email)
+					);
+					setEmails(filteredEmails);
+					return;
+				}
+			} catch {
+				toast.error("Failed to validate emails");
+			}
+		}
+
+		setEmails(newEmails);
+	};
 
 	useEffect(() => {
 		setIsLoadingInvites(false);
@@ -220,7 +249,7 @@ export default function InviteTeamPage() {
 									animate={{ opacity: 1, y: 0 }}
 									transition={{ delay: 0.1 }}
 								>
-									<EmailTagInput emails={emails} onEmailsChange={setEmails} />
+									<EmailTagInput emails={emails} onEmailsChange={handleEmailsChange} />
 								</motion.div>
 
 								<motion.div
