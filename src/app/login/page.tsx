@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useRouter } from "next/navigation";
 import { AnimatedBackground, Button, Divider, Input, Navbar, NavLink, PageHeader } from "@b3-crow/ui-kit";
 import { LuArrowRight, LuLoader } from "react-icons/lu";
 import { GrGoogle } from "react-icons/gr";
@@ -9,12 +10,15 @@ import { motion } from "framer-motion";
 import toast from "react-hot-toast";
 import { signInSchema, type SignInFormData } from "@/lib/validations";
 import { type FormErrors } from "@/types";
-import { signIn } from "@/lib/auth-client";
+import { signIn, getSession } from "@/lib/auth-client";
+import { useDetermineAuthFlow } from "@/hooks/use-onboarding";
 
 export default function LoginPage() {
+	const router = useRouter();
 	const [errors, setErrors] = useState<FormErrors<SignInFormData>>({});
 	const [isSubmitting, setIsSubmitting] = useState(false);
 	const [isGoogleLoading, setIsGoogleLoading] = useState(false);
+	const determineAuthFlow = useDetermineAuthFlow();
 
 	const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
 		e.preventDefault();
@@ -37,8 +41,21 @@ export default function LoginPage() {
 				return;
 			}
 
-			const dashboardUrl = process.env.NEXT_PUBLIC_DASHBOARD_URL || "http://localhost:3002";
-			window.location.href = dashboardUrl;
+			const session = await getSession();
+			if (!session?.data?.user?.id) {
+				toast.error("Failed to get session");
+				return;
+			}
+
+			const result = await determineAuthFlow.mutateAsync(session.data.user.id);
+
+			if (result.destination === "dashboard") {
+				const dashboardUrl = process.env.NEXT_PUBLIC_DASHBOARD_URL || "http://localhost:3002";
+				window.location.href = dashboardUrl;
+				return;
+			}
+
+			router.push(result.targetRoute || "/organization");
 		} catch (error) {
 			if (error instanceof z.ZodError) {
 				const newErrors: FormErrors<SignInFormData> = {};
@@ -61,11 +78,11 @@ export default function LoginPage() {
 	};
 
 	const handleGoogleLogin = async () => {
+		setErrors({});
 		setIsGoogleLoading(true);
-		const dashboardUrl = process.env.NEXT_PUBLIC_DASHBOARD_URL || window.location.origin;
 		await signIn.social({
 			provider: "google",
-			callbackURL: dashboardUrl,
+			callbackURL: `${window.location.origin}/auth/callback`,
 		});
 	};
 
@@ -167,7 +184,14 @@ export default function LoginPage() {
 								{isSubmitting ? "Signing in" : "Sign in"}
 							</Button>
 						</motion.div>
+					</motion.form>
 
+					<motion.div
+						className="w-full space-y-4"
+						initial={{ opacity: 0, y: 20 }}
+						animate={{ opacity: 1, y: 0 }}
+						transition={{ duration: 0.5, delay: 0.2 }}
+					>
 						<motion.div
 							initial={{ opacity: 0 }}
 							animate={{ opacity: 1 }}
@@ -195,7 +219,7 @@ export default function LoginPage() {
 								</div>
 							</Button>
 						</motion.div>
-					</motion.form>
+					</motion.div>
 				</div>
 			</main>
 
