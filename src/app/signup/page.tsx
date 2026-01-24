@@ -11,13 +11,19 @@ import toast from "react-hot-toast";
 import { signUpSchema, type SignUpFormData } from "@/lib/validations";
 import { type FormErrors } from "@/types";
 import { signIn, signUp, getSession } from "@/lib/auth-client";
-import { useStartOnboarding } from "@/hooks/use-onboarding";
+import { useDetermineAuthFlow } from "@/hooks/use-onboarding";
+
+const isUserAlreadyExistsError = (error: { code?: string; message?: string }): boolean => {
+	if (error.code === "USER_ALREADY_EXISTS") return true;
+	const message = error.message?.toLowerCase() || "";
+	return message.includes("already exists") || message.includes("already registered");
+};
 
 export default function SignUpPage() {
 	const router = useRouter();
 	const [errors, setErrors] = useState<FormErrors<SignUpFormData>>({});
 	const [isSubmitting, setIsSubmitting] = useState(false);
-	const startOnboarding = useStartOnboarding();
+	const determineAuthFlow = useDetermineAuthFlow();
 
 	const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
 		e.preventDefault();
@@ -41,6 +47,11 @@ export default function SignUpPage() {
 			});
 
 			if (error) {
+				if (isUserAlreadyExistsError(error)) {
+					toast.error("An account with this email already exists. Please sign in instead.");
+					router.push("/login");
+					return;
+				}
 				toast.error(error.message || "Failed to create account");
 				return;
 			}
@@ -51,14 +62,15 @@ export default function SignUpPage() {
 				return;
 			}
 
-			const result = await startOnboarding.mutateAsync(session.data.user.id);
+			const result = await determineAuthFlow.mutateAsync(session.data.user.id);
 
-			if (result.redirect) {
-				router.push(result.redirect);
+			if (result.destination === "dashboard") {
+				const dashboardUrl = process.env.NEXT_PUBLIC_DASHBOARD_URL || "http://localhost:3002";
+				window.location.href = dashboardUrl;
 				return;
 			}
 
-			router.push("/organization");
+			router.push(result.targetRoute || "/organization");
 
 		} catch (error) {
 			if (error instanceof z.ZodError) {
@@ -89,10 +101,11 @@ export default function SignUpPage() {
 	const [isGoogleLoading, setIsGoogleLoading] = useState(false);
 
 	const handleGoogleSignup = async () => {
+		setErrors({});
 		setIsGoogleLoading(true);
 		await signIn.social({
 			provider: "google",
-			callbackURL: `${window.location.origin}/organization`,
+			callbackURL: `${window.location.origin}/auth/callback`,
 		});
 	};
 
@@ -223,7 +236,14 @@ export default function SignUpPage() {
 								{isSubmitting ? "Setting up" : "Continue"}
 							</Button>
 						</motion.div>
+					</motion.form>
 
+					<motion.div
+						className="w-full space-y-4"
+						initial={{ opacity: 0, y: 20 }}
+						animate={{ opacity: 1, y: 0 }}
+						transition={{ duration: 0.5, delay: 0.2 }}
+					>
 						<motion.div
 							initial={{ opacity: 0 }}
 							animate={{ opacity: 1 }}
@@ -251,7 +271,7 @@ export default function SignUpPage() {
 								</div>
 							</Button>
 						</motion.div>
-					</motion.form>
+					</motion.div>
 				</div>
 			</main>
 
