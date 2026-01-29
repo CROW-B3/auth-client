@@ -230,6 +230,23 @@ const onboardingApi = {
 		if (!response.ok) throw new Error("Failed to create checkout session");
 		return response.json();
 	},
+
+	sendTeamInvites: async (input: {
+		emails: string[];
+		organizationId: string;
+		organizationName: string;
+		inviterName: string;
+		permissions?: Record<string, unknown>;
+	}): Promise<{ success: boolean; sent: number; failed: number; errors: Array<{ email: string; error: string }> }> => {
+		const response = await fetch(`${API_GATEWAY_URL}/api/v1/auth/team-invitations/send-invites`, {
+			method: "POST",
+			headers: { "Content-Type": "application/json" },
+			credentials: "include",
+			body: JSON.stringify(input),
+		});
+		if (!response.ok) throw new Error("Failed to send team invitations");
+		return response.json();
+	},
 };
 
 export const useStartOnboarding = () => {
@@ -329,6 +346,18 @@ export const useSubmitTeam = () => {
 		onSuccess: (data) => {
 			queryClient.setQueryData(["onboarding", data.id], data);
 		},
+	});
+};
+
+export const useSendTeamInvites = () => {
+	return useMutation({
+		mutationFn: (input: {
+			emails: string[];
+			organizationId: string;
+			organizationName: string;
+			inviterName: string;
+			permissions?: Record<string, unknown>;
+		}) => onboardingApi.sendTeamInvites(input),
 	});
 };
 
