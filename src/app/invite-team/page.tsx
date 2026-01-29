@@ -9,7 +9,7 @@ import toast from "react-hot-toast";
 import { z } from "zod";
 import { inviteTeamSchema, type PendingInvite } from "@/lib/validations";
 import { useOnboardingStore } from "@/stores/onboarding-store";
-import { useSubmitTeam, useCompleteOnboarding } from "@/hooks/use-onboarding";
+import { useSubmitTeam, useCompleteOnboarding, useSendTeamInvites } from "@/hooks/use-onboarding";
 import { useCheckEmails } from "@/hooks/use-users";
 
 export default function InviteTeamPage() {
@@ -26,10 +26,11 @@ export default function InviteTeamPage() {
 	const [pendingInvites, setPendingInvites] = useState<PendingInvite[]>([]);
 	const [isLoadingInvites, setIsLoadingInvites] = useState(true);
 
-	const { onboardingId, betterAuthOrgId } = useOnboardingStore();
+	const { onboardingId, betterAuthOrgId, organizationName } = useOnboardingStore();
 	const submitTeam = useSubmitTeam();
 	const completeOnboarding = useCompleteOnboarding();
 	const checkEmails = useCheckEmails();
+	const sendInvites = useSendTeamInvites();
 
 	const handleEmailsChange = async (newEmails: string[]) => {
 		const addedEmails = newEmails.filter(email => !emails.includes(email));
@@ -108,7 +109,22 @@ export default function InviteTeamPage() {
 
 			const validatedData = inviteTeamSchema.parse(formData);
 
-			await new Promise((resolve) => setTimeout(resolve, 1000));
+			if (!betterAuthOrgId || !organizationName) {
+				throw new Error("Organization information missing");
+			}
+
+			const result = await sendInvites.mutateAsync({
+				emails: validatedData.emails,
+				organizationId: betterAuthOrgId,
+				organizationName: organizationName || "Your Organization",
+				inviterName: "Team Admin",
+				permissions: validatedData.permissions,
+			});
+
+			if (result.failed > 0) {
+				const failedEmails = result.errors.map(e => e.email).join(", ");
+				toast.error(`Failed to send ${result.failed} invite(s): ${failedEmails}`);
+			}
 
 			const newInvites: PendingInvite[] = validatedData.emails.map((email, index) => {
 				const permissions: PendingInvite['permissions'] = {};
