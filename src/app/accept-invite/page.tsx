@@ -1,129 +1,49 @@
 "use client";
 
 import { useState, useEffect, Suspense } from "react";
-import { AnimatedBackground, Button, Input, Navbar, NavLink, PageHeader, InvitationDetailsCard } from "@b3-crow/ui-kit";
-import { LuArrowRight, LuLoader, LuEye, LuEyeOff } from "react-icons/lu";
-import { z } from "zod";
+import { AnimatedBackground, Button, Navbar, PageHeader } from "@b3-crow/ui-kit";
+import { LuCheck, LuX, LuLoader } from "react-icons/lu";
 import { motion } from "framer-motion";
 import toast from "react-hot-toast";
 import { useRouter, useSearchParams } from "next/navigation";
-import { acceptInviteSchema, type AcceptInviteFormData } from "@/lib/validations";
-import { type FormErrors } from "@/types";
-import { MOCK_INVITATION, MOCK_INVITATION_FIELDS } from "@/lib/constants/mock-data";
-
-interface InvitationDetails {
-	organization: string;
-	role: string;
-	email: string;
-}
 
 function AcceptInviteContent() {
 	const router = useRouter();
 	const searchParams = useSearchParams();
-	const [errors, setErrors] = useState<FormErrors<AcceptInviteFormData>>({});
-	const [isSubmitting, setIsSubmitting] = useState(false);
-	const [showPassword, setShowPassword] = useState(false);
-	const [isLoadingInvite, setIsLoadingInvite] = useState(true);
-	const [invitationDetails, setInvitationDetails] = useState<InvitationDetails>(MOCK_INVITATION);
+	const [isLoading, setIsLoading] = useState(false);
+
+	const organizationId = searchParams.get("org");
+	const email = searchParams.get("email");
+	const organizationName = searchParams.get("orgName") || "this organization";
 
 	useEffect(() => {
-		const token = searchParams.get("token");
-
-		if (!token) {
-			setIsLoadingInvite(false);
-			return;
+		// Validate that we have the required params
+		if (!organizationId || !email) {
+			toast.error("Invalid invitation link");
+			router.push("/");
 		}
+	}, [organizationId, email, router]);
 
-		const fetchInvitationDetails = async () => {
-			try {
-				const response = await fetch(`/api/invitations/${encodeURIComponent(token)}`);
-
-				if (!response.ok) {
-					if (response.status >= 500) {
-						toast.error("Failed to load invitation details");
-					}
-					throw new Error("Failed to fetch invitation details");
-				}
-
-				const data = await response.json() as { organization: string; role: string; email: string };
-				setInvitationDetails({
-					organization: data.organization,
-					role: data.role,
-					email: data.email,
-				});
-			} catch (error) {
-				console.error("Error fetching invitation:", error);
-			} finally {
-				setIsLoadingInvite(false);
-			}
-		};
-
-		void fetchInvitationDetails();
-	}, [searchParams]);
-
-	const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
-		e.preventDefault();
-		setIsSubmitting(true);
-		setErrors({});
-
-		const formData = new FormData(e.currentTarget);
-		const formValues = Object.fromEntries(formData.entries());
-
-		try {
-			const validatedData = acceptInviteSchema.parse(formValues);
-			const token = searchParams.get("token");
-
-			const response = await fetch("/api/invitations/accept", {
-				method: "POST",
-				headers: {
-					"Content-Type": "application/json",
-				},
-				body: JSON.stringify({
-					token,
-					fullname: validatedData.fullname,
-					password: validatedData.password,
-				}),
-			});
-
-			if (!response.ok) {
-				const errorData = await response.json().catch(() => ({ message: "Failed to accept invitation" })) as { message?: string };
-				throw new Error(errorData.message || "Failed to accept invitation");
-			}
-
-			toast.success("Welcome to the team! Redirecting...");
-
-			setTimeout(() => {
-				router.push("/dashboard");
-			}, 1000);
-		} catch (error) {
-			if (error instanceof z.ZodError) {
-				const newErrors: FormErrors<AcceptInviteFormData> = {};
-
-				error.issues.forEach((fieldError) => {
-					if (fieldError.path[0]) {
-						const fieldName = fieldError.path[0] as keyof AcceptInviteFormData;
-						newErrors[fieldName] = fieldError.message;
-					}
-				});
-				setErrors(newErrors);
-
-				if (error.issues.length > 0) {
-					toast.error("Please fix the errors in the form");
-				}
-			} else {
-				console.error("Accept invite error:", error);
-				const errorMessage = error instanceof Error ? error.message : "An unexpected error occurred. Please try again.";
-				toast.error(errorMessage);
-			}
-		} finally {
-			setIsSubmitting(false);
-		}
+	const handleAccept = () => {
+		setIsLoading(true);
+		// Store invitation data in sessionStorage for sign-up page
+		sessionStorage.setItem("pendingInvitation", JSON.stringify({
+			organizationId,
+			organizationName,
+			email,
+		}));
+		// Redirect to signup page
+		router.push(`/signup?email=${encodeURIComponent(email || "")}`);
 	};
 
 	const handleDecline = () => {
 		toast.error("Invitation declined");
 		router.push("/");
 	};
+
+	if (!organizationId || !email) {
+		return null;
+	}
 
 	return (
 		<div className="min-h-screen flex flex-col antialiased selection:bg-violet-500/30 selection:text-violet-200 overflow-hidden relative">
@@ -135,7 +55,7 @@ function AcceptInviteContent() {
 
 			<main className="flex-grow flex flex-col items-center justify-center relative z-10 w-full px-6 pb-6 max-w-7xl mx-auto h-full overflow-hidden">
 				<motion.div
-					className="w-full max-w-[440px] flex flex-col justify-center"
+					className="w-full max-w-[520px] flex flex-col justify-center"
 					initial={{ opacity: 0, y: 20 }}
 					animate={{ opacity: 1, y: 0 }}
 					transition={{ duration: 0.5 }}
@@ -150,107 +70,95 @@ function AcceptInviteContent() {
 						initial={{ opacity: 0, y: 10 }}
 						animate={{ opacity: 1, y: 0 }}
 						transition={{ delay: 0.2 }}
+						className="mb-8"
 					>
-						<InvitationDetailsCard
-							fields={[...MOCK_INVITATION_FIELDS]}
-						/>
+						{/* Invitation Details Card */}
+						<div className="relative overflow-hidden rounded-2xl border border-white/10 bg-gradient-to-br from-white/5 to-white/[0.02] backdrop-blur-sm p-6 space-y-4">
+							<div className="flex items-center justify-between">
+								<span className="text-sm text-zinc-400 uppercase tracking-wider">Organization</span>
+								<span className="text-white font-medium">{organizationName}</span>
+							</div>
+
+							<div className="h-px bg-gradient-to-r from-transparent via-white/10 to-transparent" />
+
+							<div className="flex items-center justify-between">
+								<span className="text-sm text-zinc-400 uppercase tracking-wider">Role</span>
+								<span className="inline-flex items-center px-3 py-1 rounded-full bg-violet-500/10 border border-violet-500/20 text-violet-400 text-sm font-medium">
+									Member
+								</span>
+							</div>
+
+							<div className="h-px bg-gradient-to-r from-transparent via-white/10 to-transparent" />
+
+							<div className="flex items-center justify-between">
+								<span className="text-sm text-zinc-400 uppercase tracking-wider">Email</span>
+								<span className="text-white font-medium">{email}</span>
+							</div>
+						</div>
 					</motion.div>
 
-					<motion.form
-						className="space-y-4 mb-8"
-						onSubmit={handleSubmit}
-						noValidate
+					<motion.div
+						className="space-y-3"
 						initial={{ opacity: 0, y: 10 }}
 						animate={{ opacity: 1, y: 0 }}
 						transition={{ delay: 0.3 }}
 					>
-						<motion.div
-							className="space-y-3"
-							initial="hidden"
-							animate="visible"
-							variants={{
-								hidden: { opacity: 0 },
-								visible: {
-									opacity: 1,
-									transition: {
-										staggerChildren: 0.1,
-										delayChildren: 0.4,
-									},
-								},
-							}}
+						<Button
+							type="button"
+							variant="primary"
+							size="lg"
+							onClick={handleAccept}
+							disabled={isLoading}
+							className="w-full"
 						>
-							<motion.div variants={{ hidden: { opacity: 0, y: 10 }, visible: { opacity: 1, y: 0 } }}>
-								<Input
-									inputSize="sm"
-									id="fullname"
-									name="fullname"
-									type="text"
-									placeholder="Your name"
-									aria-label="Full name"
-									autoComplete="name"
-									error={errors.fullname}
-								/>
-							</motion.div>
+							{isLoading ? (
+								<>
+									<LuLoader className="w-5 h-5 animate-spin" />
+									<span>Redirecting...</span>
+								</>
+							) : (
+								<>
+									<LuCheck className="w-5 h-5" />
+									<span>Accept Invitation</span>
+								</>
+							)}
+						</Button>
 
-							<motion.div variants={{ hidden: { opacity: 0, y: 10 }, visible: { opacity: 1, y: 0 } }} className="relative">
-								<Input
-									inputSize="sm"
-									id="password"
-									name="password"
-									type={showPassword ? "text" : "password"}
-									placeholder="Create password"
-									aria-label="Create password"
-									autoComplete="new-password"
-									error={errors.password}
-								/>
-								<button
-									type="button"
-									onClick={() => setShowPassword(!showPassword)}
-									className="absolute top-0 right-0 h-9 flex items-center justify-center px-4 text-gray-500 hover:text-violet-400 focus:outline-none transition-colors z-10"
-									aria-label={showPassword ? "Hide password" : "Show password"}
-								>
-									{showPassword ? <LuEyeOff className="w-[18px] h-[18px]" /> : <LuEye className="w-[18px] h-[18px]" />}
-								</button>
-							</motion.div>
-						</motion.div>
-
-						<motion.div
-							className="space-y-3"
-							initial={{ opacity: 0, y: 10 }}
-							animate={{ opacity: 1, y: 0 }}
-							transition={{ delay: 0.7 }}
+						<Button
+							type="button"
+							variant="ghost"
+							size="lg"
+							onClick={handleDecline}
+							disabled={isLoading}
+							className="w-full"
 						>
-							<Button
-								variant="solid"
-								type="submit"
-								className="w-full bg-violet-600 hover:bg-violet-700 shadow-glow hover:shadow-glow-hover disabled:opacity-50 disabled:cursor-not-allowed"
-								arrowIcon={isSubmitting ? <LuLoader className="animate-spin" /> : <LuArrowRight />}
-								disabled={isSubmitting}
-							>
-								{isSubmitting ? "Accepting" : "Accept invitation"}
-							</Button>
-							<Button
-								variant="outline"
-								type="button"
-								onClick={handleDecline}
-								showArrow={false}
-								className="w-full border-white/10 hover:border-white/20"
-							>
-								Decline
-							</Button>
-						</motion.div>
-					</motion.form>
+							<LuX className="w-5 h-5" />
+							<span>Decline</span>
+						</Button>
+					</motion.div>
 
 					<motion.div
-						className="mt-5 text-center flex flex-col items-center gap-3"
+						className="mt-6 text-center text-sm text-zinc-400"
 						initial={{ opacity: 0 }}
 						animate={{ opacity: 1 }}
-						transition={{ delay: 0.8 }}
+						transition={{ delay: 0.4 }}
 					>
-						<NavLink href="/login">Sign in instead</NavLink>
-						<p className="text-[11px] text-gray-600">
-							By accepting, you&apos;ll be added to the organization workspace.
-						</p>
+						<p>By accepting, you'll be added to the organization workspace.</p>
+					</motion.div>
+
+					<motion.div
+						className="mt-6 text-center"
+						initial={{ opacity: 0 }}
+						animate={{ opacity: 1 }}
+						transition={{ delay: 0.5 }}
+					>
+						<button
+							onClick={() => router.push("/sign-in")}
+							className="text-sm text-zinc-400 hover:text-white transition-colors"
+							type="button"
+						>
+							Sign in Instead
+						</button>
 					</motion.div>
 				</motion.div>
 			</main>
@@ -260,7 +168,11 @@ function AcceptInviteContent() {
 
 export default function AcceptInvitePage() {
 	return (
-		<Suspense fallback={<div className="min-h-screen flex items-center justify-center"><LuLoader className="animate-spin w-8 h-8 text-violet-500" /></div>}>
+		<Suspense fallback={
+			<div className="min-h-screen flex items-center justify-center">
+				<LuLoader className="w-8 h-8 animate-spin text-violet-500" />
+			</div>
+		}>
 			<AcceptInviteContent />
 		</Suspense>
 	);

@@ -5,7 +5,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { AnimatedBackground, Button, Navbar, PageHeader } from "@b3-crow/ui-kit";
 import { LuArrowRight, LuCircleCheck } from "react-icons/lu";
 import { motion } from "framer-motion";
-import { useSubmitCheckout } from "@/hooks/use-onboarding";
+import { useSubmitCheckout, useOnboardingGuard } from "@/hooks/use-onboarding";
 import { useOnboardingStore } from "@/stores/onboarding-store";
 
 function CheckoutSuccessContent() {
@@ -15,6 +15,15 @@ function CheckoutSuccessContent() {
 	const { onboardingId } = useOnboardingStore();
 	const submitCheckout = useSubmitCheckout();
 	const hasSubmitted = useRef(false);
+
+	// Route guard
+	const guard = useOnboardingGuard("checkout");
+
+	useEffect(() => {
+		if (guard.data?.shouldRedirect && guard.data.redirectTo) {
+			router.push(guard.data.redirectTo);
+		}
+	}, [guard.data, router]);
 
 	useEffect(() => {
 		if (!sessionId) {
