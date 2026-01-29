@@ -1,6 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
+import { useEffect } from "react";
 import { motion } from "framer-motion";
 import {
 	AnimatedBackground,
@@ -18,7 +19,7 @@ import { LuArrowRight, LuLoader } from "react-icons/lu";
 import { PLANS, type PlanType, type BillingPeriod } from "@/config/plans";
 import { getPricePerModule } from "@/lib/pricing";
 import { useOnboardingStore } from "@/stores/onboarding-store";
-import { useSubmitPlan, useCreateCheckoutSession, useOnboardingById } from "@/hooks/use-onboarding";
+import { useSubmitPlan, useCreateCheckoutSession, useOnboardingById, useOnboardingGuard } from "@/hooks/use-onboarding";
 
 export default function ChoosePlanPage() {
 	const router = useRouter();
@@ -26,6 +27,15 @@ export default function ChoosePlanPage() {
 	const submitPlan = useSubmitPlan();
 	const createCheckoutSession = useCreateCheckoutSession();
 	const { data: onboarding } = useOnboardingById(onboardingId);
+
+	// Route guard
+	const guard = useOnboardingGuard("plan");
+
+	useEffect(() => {
+		if (guard.data?.shouldRedirect && guard.data.redirectTo) {
+			router.push(guard.data.redirectTo);
+		}
+	}, [guard.data, router]);
 
 	const handlePlanToggle = (plan: PlanType, checked: boolean) => {
 		if (checked && selectedPlans.length >= 3) {

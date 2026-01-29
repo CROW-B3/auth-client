@@ -8,6 +8,48 @@ import toast from "react-hot-toast";
 import { getSession } from "@/lib/auth-client";
 import { useDetermineAuthFlow } from "@/hooks/use-onboarding";
 
+const processPendingInvitation = async (
+	pendingInvitationStr: string,
+	betterAuthUserId: string,
+	setStatus: (status: string) => void
+): Promise<boolean> => {
+	const pendingInvitation = JSON.parse(pendingInvitationStr);
+	const { organizationId, email } = pendingInvitation;
+
+	if (!organizationId || !email) return false;
+
+	setStatus("Accepting your invitation...");
+
+	const API_GATEWAY_URL = process.env.NEXT_PUBLIC_API_GATEWAY_URL || "http://localhost:8000";
+
+	const response = await fetch(
+		`${API_GATEWAY_URL}/api/v1/organizations/${organizationId}/members`,
+		{
+			method: "POST",
+			headers: { "Content-Type": "application/json" },
+			credentials: "include",
+			body: JSON.stringify({
+				email,
+				role: "member",
+				betterAuthUserId,
+			}),
+		}
+	);
+
+	if (!response.ok) {
+		console.error("Failed to accept invitation:", await response.text());
+		throw new Error("Failed to accept invitation");
+	}
+
+	sessionStorage.removeItem("pendingInvitation");
+
+	setStatus("Welcome to the team! Redirecting to dashboard...");
+	const dashboardUrl = process.env.NEXT_PUBLIC_DASHBOARD_URL || "http://localhost:3002";
+	window.location.href = dashboardUrl;
+
+	return true;
+};
+
 export default function AuthCallbackPage() {
 	const router = useRouter();
 	const [status, setStatus] = useState("Verifying your account...");
@@ -26,6 +68,22 @@ export default function AuthCallbackPage() {
 					toast.error("Authentication failed. Please try again.");
 					router.push("/login");
 					return;
+				}
+
+				const pendingInvitationStr = sessionStorage.getItem("pendingInvitation");
+				if (pendingInvitationStr) {
+					try {
+						const hasPendingInvitation = await processPendingInvitation(
+							pendingInvitationStr,
+							session.data.user.id,
+							setStatus
+						);
+						if (hasPendingInvitation) return;
+					} catch (inviteError) {
+						console.error("Error processing pending invitation:", inviteError);
+						sessionStorage.removeItem("pendingInvitation");
+						toast.error("Failed to accept invitation. Continuing with onboarding...");
+					}
 				}
 
 				setStatus("Checking account status...");

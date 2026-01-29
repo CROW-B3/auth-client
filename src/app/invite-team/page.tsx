@@ -8,9 +8,12 @@ import { motion } from "framer-motion";
 import toast from "react-hot-toast";
 import { z } from "zod";
 import { inviteTeamSchema, type PendingInvite } from "@/lib/validations";
-import { useOnboardingStore } from "@/stores/onboarding-store";
-import { useSubmitTeam, useCompleteOnboarding, useSendTeamInvites } from "@/hooks/use-onboarding";
+import { useOnboardingStore, useOnboardingStoreHydrated } from "@/stores/onboarding-store";
+import { useSubmitTeam, useCompleteOnboarding, useSendTeamInvites, useOnboardingGuard } from "@/hooks/use-onboarding";
 import { useCheckEmails } from "@/hooks/use-users";
+import { buildPermissions, buildPermissionSummary } from "@/utils/permissions";
+import { createPendingInvites, updateInviteSentTime, removeInvite } from "@/utils/invitations";
+import { toggleComponent, filterExistingEmails, findAddedEmails } from "@/utils/components";
 
 export default function InviteTeamPage() {
 	const router = useRouter();
@@ -26,34 +29,55 @@ export default function InviteTeamPage() {
 	const [pendingInvites, setPendingInvites] = useState<PendingInvite[]>([]);
 	const [isLoadingInvites, setIsLoadingInvites] = useState(true);
 
-	const { onboardingId, betterAuthOrgId, organizationName } = useOnboardingStore();
+	const { onboardingId, betterAuthOrgId, organizationName, hydrated } = useOnboardingStoreHydrated();
 	const submitTeam = useSubmitTeam();
 	const completeOnboarding = useCompleteOnboarding();
 	const checkEmails = useCheckEmails();
 	const sendInvites = useSendTeamInvites();
 
+	// Route guard - ensure user has completed previous steps
+	const guard = useOnboardingGuard("team");
+
+	useEffect(() => {
+		if (guard.data?.shouldRedirect && guard.data.redirectTo) {
+			router.push(guard.data.redirectTo);
+		}
+	}, [guard.data, router]);
+
+	// Wait for hydration to complete
+	useEffect(() => {
+		if (hydrated) {
+			console.log("[INVITE-TEAM] Store hydrated with:", {
+				onboardingId,
+				betterAuthOrgId,
+				organizationName,
+			});
+		}
+	}, [hydrated, onboardingId, betterAuthOrgId, organizationName]);
+
 	const handleEmailsChange = async (newEmails: string[]) => {
-		const addedEmails = newEmails.filter(email => !emails.includes(email));
+		const addedEmails = findAddedEmails(newEmails, emails);
 
-		if (addedEmails.length > 0 && betterAuthOrgId) {
-			try {
-				const result = await checkEmails.mutateAsync({
-					emails: addedEmails,
-					organizationId: betterAuthOrgId
-				});
+		if (addedEmails.length === 0 || !betterAuthOrgId) {
+			setEmails(newEmails);
+			return;
+		}
 
-				if (result.existingEmails.length > 0) {
-					const existingList = result.existingEmails.join(", ");
-					toast.error(`These emails are already users: ${existingList}`);
-					const filteredEmails = newEmails.filter(
-						email => !result.existingEmails.includes(email)
-					);
-					setEmails(filteredEmails);
-					return;
-				}
-			} catch {
-				toast.error("Failed to validate emails");
+		try {
+			const result = await checkEmails.mutateAsync({
+				emails: addedEmails,
+				organizationId: betterAuthOrgId
+			});
+
+			if (result.existingEmails.length > 0) {
+				const existingList = result.existingEmails.join(", ");
+				toast.error(`These emails are already users: ${existingList}`);
+				const filteredEmails = filterExistingEmails(newEmails, result.existingEmails);
+				setEmails(filteredEmails);
+				return;
 			}
+		} catch {
+			toast.error("Failed to validate emails");
 		}
 
 		setEmails(newEmails);
@@ -64,11 +88,7 @@ export default function InviteTeamPage() {
 	}, []);
 
 	const handleComponentToggle = (component: string) => {
-		if (chatComponents.includes(component)) {
-			setChatComponents(chatComponents.filter((c) => c !== component));
-		} else {
-			setChatComponents([...chatComponents, component]);
-		}
+		setChatComponents(toggleComponent(chatComponents, component));
 	};
 
 	const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
@@ -76,31 +96,34 @@ export default function InviteTeamPage() {
 		setIsSubmitting(true);
 
 		try {
-			const permissions: Record<string, unknown> = {};
-
-			if (chatEnabled) {
-				permissions.chat = {
-					enabled: chatEnabled,
-					components: chatComponents as Array<"web" | "cctv" | "social">,
-					lookbackWindow: lookbackWindow as "7days" | "30days" | "90days" | "1year" | "all",
-				};
+			// Ensure store has hydrated before proceeding
+			if (!hydrated) {
+				toast.error("Please wait, loading your organization data...");
+				setIsSubmitting(false);
+				return;
 			}
 
-			if (interactionsEnabled !== undefined) {
-				permissions.interactions = interactionsEnabled;
+			// Validate organization data is available
+			if (!betterAuthOrgId || !organizationName) {
+				toast.error("Organization information is missing. Please restart the onboarding process.");
+				console.error("[INVITE-TEAM] Missing organization data:", {
+					betterAuthOrgId,
+					organizationName,
+					onboardingId,
+				});
+				setIsSubmitting(false);
+				return;
 			}
 
-			if (patternsEnabled !== undefined) {
-				permissions.patterns = patternsEnabled;
-			}
-
-			if (teamManagementEnabled !== undefined) {
-				permissions.teamManagement = teamManagementEnabled;
-			}
-
-			if (apiKeyManagementEnabled !== undefined) {
-				permissions.apiKeyManagement = apiKeyManagementEnabled;
-			}
+			const permissions = buildPermissions(
+				chatEnabled,
+				chatComponents,
+				lookbackWindow,
+				interactionsEnabled,
+				patternsEnabled,
+				teamManagementEnabled,
+				apiKeyManagementEnabled
+			);
 
 			const formData = {
 				emails,
@@ -108,10 +131,6 @@ export default function InviteTeamPage() {
 			};
 
 			const validatedData = inviteTeamSchema.parse(formData);
-
-			if (!betterAuthOrgId || !organizationName) {
-				throw new Error("Organization information missing");
-			}
 
 			const result = await sendInvites.mutateAsync({
 				emails: validatedData.emails,
@@ -126,41 +145,10 @@ export default function InviteTeamPage() {
 				toast.error(`Failed to send ${result.failed} invite(s): ${failedEmails}`);
 			}
 
-			const newInvites: PendingInvite[] = validatedData.emails.map((email, index) => {
-				const permissions: PendingInvite['permissions'] = {};
-
-				if (validatedData.permissions?.chat) {
-					permissions.chat = {
-						components: validatedData.permissions.chat.components,
-						lookbackWindow: validatedData.permissions.chat.lookbackWindow,
-					};
-				}
-
-				if (validatedData.permissions?.interactions !== undefined) {
-					permissions.interactions = validatedData.permissions.interactions;
-				}
-
-				if (validatedData.permissions?.patterns !== undefined) {
-					permissions.patterns = validatedData.permissions.patterns;
-				}
-
-				if (validatedData.permissions?.teamManagement !== undefined) {
-					permissions.teamManagement = validatedData.permissions.teamManagement;
-				}
-
-				if (validatedData.permissions?.apiKeyManagement !== undefined) {
-					permissions.apiKeyManagement = validatedData.permissions.apiKeyManagement;
-				}
-
-				return {
-					id: `invite-${Date.now()}-${index}`,
-					email,
-					initials: email.substring(0, 2).toUpperCase(),
-					status: "pending" as const,
-					permissions,
-					sentAt: new Date(),
-				};
-			});
+			const newInvites = createPendingInvites(
+				validatedData.emails,
+				validatedData.permissions
+			);
 
 			setPendingInvites([...pendingInvites, ...newInvites]);
 
@@ -207,33 +195,53 @@ export default function InviteTeamPage() {
 	};
 
 	const handleResend = async (id: string) => {
-		await new Promise((resolve) => setTimeout(resolve, 500));
-		toast.success("Invitation resent!");
+		const invite = pendingInvites.find((inv) => inv.id === id);
+		if (!invite || !betterAuthOrgId || !organizationName) {
+			toast.error("Cannot resend invitation");
+			return;
+		}
+
+		try {
+			const result = await sendInvites.mutateAsync({
+				emails: [invite.email],
+				organizationId: betterAuthOrgId,
+				organizationName: organizationName,
+				inviterName: "Team Admin",
+				permissions: invite.permissions || {},
+			});
+
+			if (result.success && result.sent > 0) {
+				toast.success(`Invitation resent to ${invite.email}!`);
+				setPendingInvites(updateInviteSentTime(pendingInvites, id));
+			} else {
+				toast.error("Failed to resend invitation");
+			}
+		} catch (error) {
+			console.error("Error resending invitation:", error);
+			toast.error("Failed to resend invitation");
+		}
 	};
 
 	const handleRevoke = async (id: string) => {
-		setPendingInvites(pendingInvites.filter((invite) => invite.id !== id));
-		toast.success("Invitation revoked");
-	};
+		const invite = pendingInvites.find((inv) => inv.id === id);
 
-	const getPermissionSummary = () => {
-		const tags: string[] = [];
-
-		if (chatEnabled && chatComponents.length > 0) {
-			const components = chatComponents.map((c) => c.charAt(0).toUpperCase() + c.slice(1)).join(" + ");
-			const lookback = lookbackWindow === "1year" ? "1y" : lookbackWindow.replace("days", "d");
-			tags.push(`Chat: ${components} (≤ ${lookback})`);
+		if (!invite) {
+			return;
 		}
 
-		if (interactionsEnabled) tags.push("Interactions");
-		if (patternsEnabled) tags.push("Patterns");
-		if (teamManagementEnabled) tags.push("Team management");
-		if (apiKeyManagementEnabled) tags.push("API key management");
-
-		return tags;
+		setPendingInvites(removeInvite(pendingInvites, id));
+		toast.success(`Invitation to ${invite.email} revoked`);
 	};
 
-	const permissionTags = getPermissionSummary();
+	const permissionTags = buildPermissionSummary(
+		chatEnabled,
+		chatComponents,
+		lookbackWindow,
+		interactionsEnabled,
+		patternsEnabled,
+		teamManagementEnabled,
+		apiKeyManagementEnabled
+	);
 
 	return (
 		<div className="min-h-screen flex flex-col antialiased selection:bg-violet-500/30 selection:text-violet-200 overflow-hidden relative">
