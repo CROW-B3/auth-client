@@ -1,21 +1,35 @@
 "use client";
 
-import { useEffect, Suspense } from "react";
+import { useEffect, Suspense, useRef } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { AnimatedBackground, Button, Navbar, PageHeader } from "@b3-crow/ui-kit";
 import { LuArrowRight, LuCircleCheck } from "react-icons/lu";
 import { motion } from "framer-motion";
+import { useSubmitCheckout } from "@/hooks/use-onboarding";
+import { useOnboardingStore } from "@/stores/onboarding-store";
 
 function CheckoutSuccessContent() {
 	const router = useRouter();
 	const searchParams = useSearchParams();
 	const sessionId = searchParams.get('session_id');
+	const { onboardingId } = useOnboardingStore();
+	const submitCheckout = useSubmitCheckout();
+	const hasSubmitted = useRef(false);
 
 	useEffect(() => {
 		if (!sessionId) {
 			router.push('/choose-plan');
+			return;
 		}
-	}, [sessionId, router]);
+
+		if (!onboardingId || hasSubmitted.current) return;
+		hasSubmitted.current = true;
+
+		submitCheckout.mutate({
+			onboardingId,
+			input: { stripeSessionId: sessionId },
+		});
+	}, [sessionId, onboardingId, router, submitCheckout]);
 
 	const handleContinue = () => {
 		router.push('/connect-products');

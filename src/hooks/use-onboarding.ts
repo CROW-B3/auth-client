@@ -3,6 +3,44 @@ import { useOnboardingStore } from "@/stores/onboarding-store";
 
 const API_GATEWAY_URL = process.env.NEXT_PUBLIC_API_GATEWAY_URL || "http://localhost:8000";
 
+interface UserRecord {
+	id: string;
+	betterAuthUserId: string;
+	organizationId: string;
+	email: string;
+	name: string;
+	permissions: Record<string, unknown>;
+	role: "owner" | "admin" | "member";
+}
+
+interface AuthFlowResult {
+	destination: "dashboard" | "onboarding";
+	onboarding?: OnboardingRecord;
+	user?: UserRecord;
+	targetRoute?: string;
+}
+
+const ONBOARDING_STEPS = [
+	{ step: 1, name: "organization", route: "/organization" },
+	{ step: 2, name: "plan", route: "/choose-plan" },
+	{ step: 3, name: "checkout", route: "/checkout" },
+	{ step: 4, name: "products", route: "/connect-products" },
+	{ step: 5, name: "sources", route: "/connect-sources" },
+	{ step: 6, name: "team", route: "/invite-team" },
+] as const;
+
+interface ProductSource {
+	type: "csv" | "json" | "url";
+	value: string;
+	jobId?: string;
+	status: "pending" | "processing" | "completed" | "failed";
+}
+
+interface SourceConnection {
+	apiKeyId: string;
+	connected: boolean;
+}
+
 interface OnboardingRecord {
 	id: string;
 	betterAuthUserId: string;
@@ -12,12 +50,22 @@ interface OnboardingRecord {
 	billingBuilderId?: string;
 	currentStep: number;
 	completedSteps: string[];
+	productSource?: ProductSource;
+	sources?: {
+		web?: SourceConnection;
+		cctv?: SourceConnection;
+		social?: SourceConnection;
+	};
 	status: "in_progress" | "completed" | "abandoned";
 }
 
 interface StartOnboardingResponse {
 	redirect?: string;
 	onboarding?: OnboardingRecord;
+}
+
+interface OnboardingApiResponse {
+	onboarding: OnboardingRecord;
 }
 
 interface OrganizationStepInput {
@@ -41,6 +89,10 @@ interface ProductsStepInput {
 interface SourceStepInput {
 	sourceType: "web" | "cctv" | "social";
 	apiKeyId: string;
+}
+
+interface CheckoutStepInput {
+	stripeSessionId: string;
 }
 
 interface CheckoutSessionInput {
@@ -72,7 +124,7 @@ const onboardingApi = {
 		});
 		if (response.status === 404) return null;
 		if (!response.ok) throw new Error("Failed to get onboarding");
-		const data = await response.json();
+		const data = (await response.json()) as OnboardingApiResponse;
 		return data.onboarding;
 	},
 
@@ -82,7 +134,7 @@ const onboardingApi = {
 		});
 		if (response.status === 404) return null;
 		if (!response.ok) throw new Error("Failed to get onboarding");
-		const data = await response.json();
+		const data = (await response.json()) as OnboardingApiResponse;
 		return data.onboarding;
 	},
 
@@ -94,7 +146,7 @@ const onboardingApi = {
 			body: JSON.stringify(input),
 		});
 		if (!response.ok) throw new Error("Failed to submit organization step");
-		const data = await response.json();
+		const data = (await response.json()) as OnboardingApiResponse;
 		return data.onboarding;
 	},
 
@@ -106,7 +158,19 @@ const onboardingApi = {
 			body: JSON.stringify(input),
 		});
 		if (!response.ok) throw new Error("Failed to submit plan step");
-		const data = await response.json();
+		const data = (await response.json()) as OnboardingApiResponse;
+		return data.onboarding;
+	},
+
+	submitCheckout: async (onboardingId: string, input: CheckoutStepInput): Promise<OnboardingRecord> => {
+		const response = await fetch(`${API_GATEWAY_URL}/api/v1/auth/onboarding/${onboardingId}/step/checkout`, {
+			method: "PATCH",
+			headers: { "Content-Type": "application/json" },
+			credentials: "include",
+			body: JSON.stringify(input),
+		});
+		if (!response.ok) throw new Error("Failed to submit checkout step");
+		const data = (await response.json()) as OnboardingApiResponse;
 		return data.onboarding;
 	},
 
@@ -118,7 +182,7 @@ const onboardingApi = {
 			body: JSON.stringify(input),
 		});
 		if (!response.ok) throw new Error("Failed to submit products step");
-		const data = await response.json();
+		const data = (await response.json()) as OnboardingApiResponse;
 		return data.onboarding;
 	},
 
@@ -130,7 +194,7 @@ const onboardingApi = {
 			body: JSON.stringify(input),
 		});
 		if (!response.ok) throw new Error("Failed to submit source step");
-		const data = await response.json();
+		const data = (await response.json()) as OnboardingApiResponse;
 		return data.onboarding;
 	},
 
@@ -141,7 +205,7 @@ const onboardingApi = {
 			credentials: "include",
 		});
 		if (!response.ok) throw new Error("Failed to submit team step");
-		const data = await response.json();
+		const data = (await response.json()) as OnboardingApiResponse;
 		return data.onboarding;
 	},
 
@@ -152,7 +216,7 @@ const onboardingApi = {
 			credentials: "include",
 		});
 		if (!response.ok) throw new Error("Failed to complete onboarding");
-		const data = await response.json();
+		const data = (await response.json()) as OnboardingApiResponse;
 		return data.onboarding;
 	},
 
@@ -164,6 +228,23 @@ const onboardingApi = {
 			body: JSON.stringify(input),
 		});
 		if (!response.ok) throw new Error("Failed to create checkout session");
+		return response.json();
+	},
+
+	sendTeamInvites: async (input: {
+		emails: string[];
+		organizationId: string;
+		organizationName: string;
+		inviterName: string;
+		permissions?: Record<string, unknown>;
+	}): Promise<{ success: boolean; sent: number; failed: number; errors: Array<{ email: string; error: string }> }> => {
+		const response = await fetch(`${API_GATEWAY_URL}/api/v1/auth/team-invitations/send-invites`, {
+			method: "POST",
+			headers: { "Content-Type": "application/json" },
+			credentials: "include",
+			body: JSON.stringify(input),
+		});
+		if (!response.ok) throw new Error("Failed to send team invitations");
 		return response.json();
 	},
 };
@@ -221,6 +302,18 @@ export const useSubmitPlan = () => {
 	});
 };
 
+export const useSubmitCheckout = () => {
+	const queryClient = useQueryClient();
+
+	return useMutation({
+		mutationFn: ({ onboardingId, input }: { onboardingId: string; input: CheckoutStepInput }) =>
+			onboardingApi.submitCheckout(onboardingId, input),
+		onSuccess: (data) => {
+			queryClient.setQueryData(["onboarding", data.id], data);
+		},
+	});
+};
+
 export const useSubmitProducts = () => {
 	const queryClient = useQueryClient();
 
@@ -256,6 +349,18 @@ export const useSubmitTeam = () => {
 	});
 };
 
+export const useSendTeamInvites = () => {
+	return useMutation({
+		mutationFn: (input: {
+			emails: string[];
+			organizationId: string;
+			organizationName: string;
+			inviterName: string;
+			permissions?: Record<string, unknown>;
+		}) => onboardingApi.sendTeamInvites(input),
+	});
+};
+
 export const useCompleteOnboarding = () => {
 	const queryClient = useQueryClient();
 	const { reset } = useOnboardingStore();
@@ -284,6 +389,87 @@ export const useCreateCheckoutSession = () => {
 		mutationFn: onboardingApi.createCheckoutSession,
 		onSuccess: (data) => {
 			setStripeSessionId(data.sessionId);
+		},
+	});
+};
+
+const userApi = {
+	getByAuthId: async (betterAuthUserId: string): Promise<UserRecord | null> => {
+		const response = await fetch(`${API_GATEWAY_URL}/api/v1/users/by-auth-id/${betterAuthUserId}`, {
+			credentials: "include",
+		});
+		if (response.status === 404) return null;
+		if (!response.ok) throw new Error("Failed to get user");
+		return response.json();
+	},
+};
+
+export const useUserByAuthId = (betterAuthUserId: string | undefined) => {
+	return useQuery({
+		queryKey: ["user", "by-auth-id", betterAuthUserId],
+		queryFn: () => userApi.getByAuthId(betterAuthUserId!),
+		enabled: !!betterAuthUserId,
+	});
+};
+
+const findFirstIncompleteStep = (completedSteps: string[]): typeof ONBOARDING_STEPS[number] => {
+	for (const step of ONBOARDING_STEPS) {
+		if (!completedSteps.includes(step.name)) {
+			return step;
+		}
+	}
+	return ONBOARDING_STEPS[ONBOARDING_STEPS.length - 1];
+};
+
+const getTargetRouteForOnboarding = (onboarding: OnboardingRecord): string => {
+	const completedSteps = onboarding.completedSteps || [];
+
+	if (completedSteps.length === 0) {
+		return "/organization";
+	}
+
+	const firstIncompleteStep = findFirstIncompleteStep(completedSteps);
+	return firstIncompleteStep.route;
+};
+
+export const determineAuthFlowDestination = async (betterAuthUserId: string): Promise<AuthFlowResult> => {
+	const user = await userApi.getByAuthId(betterAuthUserId);
+
+	if (user?.organizationId) {
+		return { destination: "dashboard", user };
+	}
+
+	const onboardingResult = await onboardingApi.start(betterAuthUserId);
+
+	if (onboardingResult.redirect) {
+		return { destination: "dashboard" };
+	}
+
+	if (!onboardingResult.onboarding) {
+		return { destination: "onboarding", targetRoute: "/organization" };
+	}
+
+	const targetRoute = getTargetRouteForOnboarding(onboardingResult.onboarding);
+
+	return {
+		destination: "onboarding",
+		onboarding: onboardingResult.onboarding,
+		targetRoute,
+	};
+};
+
+export const useDetermineAuthFlow = () => {
+	const { setOnboardingId, setBetterAuthOrgId } = useOnboardingStore();
+
+	return useMutation({
+		mutationFn: determineAuthFlowDestination,
+		onSuccess: (data) => {
+			if (data.onboarding) {
+				setOnboardingId(data.onboarding.id);
+				if (data.onboarding.betterAuthOrgId) {
+					setBetterAuthOrgId(data.onboarding.betterAuthOrgId);
+				}
+			}
 		},
 	});
 };
