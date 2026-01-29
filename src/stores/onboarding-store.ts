@@ -1,5 +1,6 @@
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
+import { useEffect, useState } from "react";
 import type { PlanType, BillingPeriod } from "@/config/plans";
 
 type ConnectionStatus = "not_started" | "in_progress" | "connected";
@@ -91,6 +92,35 @@ export const useOnboardingStore = create<OnboardingStore>()(
 
 			reset: () => set(initialState),
 		}),
-		{ name: "crow-onboarding" }
+		{
+			name: "crow-onboarding",
+			skipHydration: false,
+		}
 	)
 );
+
+// Custom hook to ensure hydration has completed before accessing store
+export const useOnboardingStoreHydrated = () => {
+	const [hydrated, setHydrated] = useState(false);
+	const store = useOnboardingStore();
+
+	useEffect(() => {
+		// Wait for next tick to ensure hydration is complete
+		const unsubHydrate = useOnboardingStore.persist.onHydrate(() => {
+			setHydrated(false);
+		});
+
+		const unsubFinishHydration = useOnboardingStore.persist.onFinishHydration(() => {
+			setHydrated(true);
+		});
+
+		setHydrated(useOnboardingStore.persist.hasHydrated());
+
+		return () => {
+			unsubHydrate();
+			unsubFinishHydration();
+		};
+	}, []);
+
+	return { ...store, hydrated };
+};
