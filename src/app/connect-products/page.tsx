@@ -1,13 +1,13 @@
 "use client";
 
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { AnimatedBackground, Navbar, PageHeader, Button, Input } from "@b3-crow/ui-kit";
 import { LuLink, LuUpload, LuFile, LuX, LuArrowRight, LuSkipForward, LuCheck } from "react-icons/lu";
 import { motion } from "framer-motion";
 import toast from "react-hot-toast";
 import { useOnboardingStore } from "@/stores/onboarding-store";
-import { useSubmitProducts } from "@/hooks/use-onboarding";
+import { useSubmitProducts, useOnboardingGuard } from "@/hooks/use-onboarding";
 
 type UploadMethod = "url" | "file" | null;
 
@@ -21,6 +21,15 @@ export default function ConnectProductsPage() {
 
 	const { onboardingId } = useOnboardingStore();
 	const submitProducts = useSubmitProducts();
+
+	// Route guard
+	const guard = useOnboardingGuard("products");
+
+	useEffect(() => {
+		if (guard.data?.shouldRedirect && guard.data.redirectTo) {
+			router.push(guard.data.redirectTo);
+		}
+	}, [guard.data, router]);
 
 	const validateUrl = (url: string): boolean => {
 		if (!url.trim()) {

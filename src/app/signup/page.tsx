@@ -1,7 +1,7 @@
 "use client";
 
-import { useState } from "react";
-import { useRouter } from "next/navigation";
+import { useState, useEffect, Suspense } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import { AnimatedBackground, Button, Checkbox, Divider, Input, Navbar, NavLink, PageHeader } from "@b3-crow/ui-kit";
 import { LuArrowRight, LuLoader } from "react-icons/lu";
 import { GrGoogle } from "react-icons/gr";
@@ -19,11 +19,40 @@ const isUserAlreadyExistsError = (error: { code?: string; message?: string }): b
 	return message.includes("already exists") || message.includes("already registered");
 };
 
-export default function SignUpPage() {
+interface PendingInvitation {
+	organizationId: string;
+	organizationName: string;
+	email: string;
+}
+
+function SignUpContent() {
 	const router = useRouter();
+	const searchParams = useSearchParams();
 	const [errors, setErrors] = useState<FormErrors<SignUpFormData>>({});
 	const [isSubmitting, setIsSubmitting] = useState(false);
+	const [pendingInvitation, setPendingInvitation] = useState<PendingInvitation | null>(null);
+	const [prefillEmail, setPrefillEmail] = useState("");
 	const determineAuthFlow = useDetermineAuthFlow();
+
+	useEffect(() => {
+		// Check for pending invitation from accept-invite page
+		const storedInvitation = sessionStorage.getItem("pendingInvitation");
+		if (storedInvitation) {
+			try {
+				const invitation = JSON.parse(storedInvitation) as PendingInvitation;
+				setPendingInvitation(invitation);
+				setPrefillEmail(invitation.email);
+			} catch (error) {
+				console.error("Failed to parse pending invitation:", error);
+			}
+		}
+
+		// Check for email in URL params
+		const emailParam = searchParams.get("email");
+		if (emailParam && !prefillEmail) {
+			setPrefillEmail(emailParam);
+		}
+	}, [searchParams, prefillEmail]);
 
 	const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
 		e.preventDefault();
@@ -39,6 +68,13 @@ export default function SignUpPage() {
 
 		try {
 			const validatedData = signUpSchema.parse(data);
+
+			// Check if email matches pending invitation
+			if (pendingInvitation && validatedData.email !== pendingInvitation.email) {
+				toast.error(`Please use the invited email: ${pendingInvitation.email}`);
+				setIsSubmitting(false);
+				return;
+			}
 
 			const { error } = await signUp.email({
 				email: validatedData.email,
@@ -62,6 +98,63 @@ export default function SignUpPage() {
 				return;
 			}
 
+			// If there's a pending invitation, finalize it by adding user to organization
+			if (pendingInvitation) {
+				try {
+					const API_GATEWAY_URL = process.env.NEXT_PUBLIC_API_GATEWAY_URL || "http://localhost:8000";
+
+					// Create user-builder first
+					const builderResponse = await fetch(`${API_GATEWAY_URL}/api/v1/users/user-builders`, {
+						method: "POST",
+						headers: { "Content-Type": "application/json" },
+						credentials: "include",
+						body: JSON.stringify({
+							betterAuthUserId: session.data.user.id,
+							organizationId: pendingInvitation.organizationId,
+							permissions: {},
+						}),
+					});
+
+					if (!builderResponse.ok) {
+						throw new Error("Failed to create user builder");
+					}
+
+					const builderData = await builderResponse.json();
+
+					// Finalize user-builder to create actual user
+					const finalizeResponse = await fetch(`${API_GATEWAY_URL}/api/v1/users/user-builders/${builderData.id}/finalize`, {
+						method: "POST",
+						headers: { "Content-Type": "application/json" },
+						credentials: "include",
+						body: JSON.stringify({
+							email: validatedData.email,
+							name: validatedData.fullname,
+							role: "member",
+						}),
+					});
+
+					if (!finalizeResponse.ok) {
+						throw new Error("Failed to finalize user");
+					}
+
+					// Clear pending invitation
+					sessionStorage.removeItem("pendingInvitation");
+
+					toast.success(`Welcome to ${pendingInvitation.organizationName}!`);
+
+					// Redirect to dashboard
+					const dashboardUrl = process.env.NEXT_PUBLIC_DASHBOARD_URL || "http://localhost:3002";
+					setTimeout(() => {
+						window.location.href = dashboardUrl;
+					}, 1000);
+					return;
+				} catch (inviteError) {
+					console.error("Failed to process invitation:", inviteError);
+					toast.error("Account created but failed to join organization. Please contact support.");
+				}
+			}
+
+			// Normal flow (no invitation)
 			const result = await determineAuthFlow.mutateAsync(session.data.user.id);
 
 			if (result.destination === "dashboard") {
@@ -123,11 +216,29 @@ export default function SignUpPage() {
 
 			<main className="flex-grow flex items-center justify-center relative z-10 w-full px-4 py-8">
 				<div className="w-full max-w-[380px] flex flex-col items-center text-center">
-					<PageHeader
-						label="Sign Up"
-						title="Create your CROW account."
-						description="Start unifying Web, CCTV, and Social signals."
-					/>
+					{pendingInvitation ? (
+						<>
+							<PageHeader
+								label="Complete Your Invitation"
+								title={`Join ${pendingInvitation.organizationName}`}
+								description="Create your account to join the team."
+							/>
+							<motion.div
+								className="w-full mb-4 p-3 rounded-lg bg-violet-500/10 border border-violet-500/20 text-sm text-violet-300"
+								initial={{ opacity: 0, y: -10 }}
+								animate={{ opacity: 1, y: 0 }}
+								transition={{ delay: 0.1 }}
+							>
+								✨ You've been invited to join as a member
+							</motion.div>
+						</>
+					) : (
+						<PageHeader
+							label="Sign Up"
+							title="Create your CROW account."
+							description="Start unifying Web, CCTV, and Social signals."
+						/>
+					)}
 
 					<motion.form
 						className="w-full space-y-4"
@@ -171,8 +282,13 @@ export default function SignUpPage() {
 									placeholder="Work email"
 									aria-label="Work email"
 									autoComplete="email"
+									defaultValue={prefillEmail}
+									disabled={!!pendingInvitation}
 									error={errors.email}
 								/>
+								{pendingInvitation && (
+									<p className="text-xs text-zinc-400 mt-1">Invited email (cannot be changed)</p>
+								)}
 							</motion.div>
 							<motion.div variants={{ hidden: { opacity: 0, y: 10 }, visible: { opacity: 1, y: 0 } }}>
 								<Input
@@ -277,5 +393,18 @@ export default function SignUpPage() {
 
 			<div className="w-full py-4 text-center z-10 relative"></div>
 		</div>
+	);
+}
+
+
+export default function SignUpPage() {
+	return (
+		<Suspense fallback={
+			<div className="min-h-screen flex items-center justify-center">
+				<LuLoader className="w-8 h-8 animate-spin text-violet-500" />
+			</div>
+		}>
+			<SignUpContent />
+		</Suspense>
 	);
 }

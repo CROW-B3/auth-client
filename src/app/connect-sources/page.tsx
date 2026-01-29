@@ -7,6 +7,7 @@ import { LuGlobe, LuVideo, LuArrowRight, LuSkipForward } from "react-icons/lu";
 import { TbSocial } from "react-icons/tb";
 import { motion } from "framer-motion";
 import toast from "react-hot-toast";
+import { useOnboardingGuard } from "@/hooks/use-onboarding";
 
 interface ConnectionSource {
 	id: string;
@@ -43,6 +44,15 @@ export default function ConnectSourcesPage() {
 			status: "not_started",
 		},
 	]);
+
+	// Route guard
+	const guard = useOnboardingGuard("sources");
+
+	useEffect(() => {
+		if (guard.data?.shouldRedirect && guard.data.redirectTo) {
+			router.push(guard.data.redirectTo);
+		}
+	}, [guard.data, router]);
 
 	useEffect(() => {
 		const savedStatus = localStorage.getItem(STORAGE_KEY);
