@@ -88,6 +88,54 @@ export default function AuthCallbackPage() {
 
 				setStatus("Checking account status...");
 
+				const API_GATEWAY_URL = process.env.NEXT_PUBLIC_API_GATEWAY_URL || "http://localhost:8000";
+
+				const userResponse = await fetch(
+					`${API_GATEWAY_URL}/api/v1/users/by-auth-id/${session.data.user.id}`,
+					{ credentials: "include" }
+				);
+
+				if (!userResponse.ok) {
+					const isOAuth = session.data.user.image;
+
+					if (isOAuth && session.data.user.image) {
+						setStatus("Setting up your profile...");
+
+						try {
+							const imageResponse = await fetch(session.data.user.image);
+							const imageBlob = await imageResponse.blob();
+							const imageFile = new File([imageBlob], "profile.jpg", { type: "image/jpeg" });
+
+							const uploadFormData = new FormData();
+							uploadFormData.append("file", imageFile);
+
+							const uploadResponse = await fetch(
+								`${API_GATEWAY_URL}/api/v1/users/${session.data.user.id}/profile-picture`,
+								{
+									method: "POST",
+									body: uploadFormData,
+									credentials: "include",
+								}
+							);
+
+							if (uploadResponse.ok) {
+								const uploadResult = await uploadResponse.json();
+								console.log("OAuth profile picture uploaded:", uploadResult.url);
+							}
+						} catch (error) {
+							console.error("Failed to download/upload OAuth profile picture:", error);
+						}
+
+						setStatus("Continuing your setup...");
+						router.push("/organization");
+						return;
+					}
+
+					setStatus("Please complete your profile...");
+					router.push("/complete-profile");
+					return;
+				}
+
 				const result = await determineAuthFlow.mutateAsync(session.data.user.id);
 
 				if (result.destination === "dashboard") {
