@@ -13,22 +13,13 @@ import { organization, getSession } from "@/lib/auth-client";
 import { useOnboardingStore } from "@/stores/onboarding-store";
 import { useSubmitOrganization, useStartOnboarding } from "@/hooks/use-onboarding";
 
-const generateSlug = (name: string): string => {
-	return name
-		.toLowerCase()
-		.replace(/[^a-z0-9\s-]/g, "")
-		.replace(/\s+/g, "-")
-		.replace(/-+/g, "-")
-		.trim();
-};
-
 export default function CreateOrganizationPage() {
 	const router = useRouter();
 	const [errors, setErrors] = useState<FormErrors<CreateOrganizationFormData>>({});
 	const [isSubmitting, setIsSubmitting] = useState(false);
 	const [isInitializing, setIsInitializing] = useState(true);
 
-	const { onboardingId, setOrganizationName, setOrganizationSlug, setBetterAuthOrgId } = useOnboardingStore();
+	const { onboardingId, setOrganizationName, setBetterAuthOrgId } = useOnboardingStore();
 	const submitOrganization = useSubmitOrganization();
 	const startOnboarding = useStartOnboarding();
 
@@ -71,7 +62,6 @@ export default function CreateOrganizationPage() {
 
 		try {
 			const validatedData = createOrganizationSchema.parse(formValues);
-			const slug = generateSlug(validatedData.organizationName);
 
 			const session = await getSession();
 			if (!session?.data?.user?.id) {
@@ -80,9 +70,11 @@ export default function CreateOrganizationPage() {
 				return;
 			}
 
+			const API_GATEWAY_URL = process.env.NEXT_PUBLIC_API_GATEWAY_URL || "http://localhost:8000";
+
+			// Step 1: Create Better Auth organization
 			const { data: org, error: orgError } = await organization.create({
 				name: validatedData.organizationName,
-				slug,
 			});
 
 			if (orgError || !org) {
@@ -91,20 +83,87 @@ export default function CreateOrganizationPage() {
 			}
 
 			setOrganizationName(validatedData.organizationName);
-			setOrganizationSlug(slug);
 			setBetterAuthOrgId(org.id);
 
-			if (onboardingId) {
-				await submitOrganization.mutateAsync({
-					onboardingId,
-					input: {
-						organizationName: validatedData.organizationName,
-						slug,
-						betterAuthOrgId: org.id,
-						betterAuthUserId: session.data.user.id,
-					},
-				});
+			if (!onboardingId) {
+				toast.error("Onboarding not initialized");
+				return;
 			}
+
+			// Step 2: Create org-builder
+			const orgBuilderResponse = await fetch(`${API_GATEWAY_URL}/api/v1/org-builders`, {
+				method: "POST",
+				headers: { "Content-Type": "application/json" },
+				credentials: "include",
+				body: JSON.stringify({
+					betterAuthOrgId: org.id,
+					name: validatedData.organizationName,
+				}),
+			});
+
+			if (!orgBuilderResponse.ok) {
+				toast.error("Failed to create organization builder");
+				return;
+			}
+
+			const orgBuilder = await orgBuilderResponse.json();
+
+			// Step 3: Create user-builder
+			const userBuilderResponse = await fetch(`${API_GATEWAY_URL}/api/v1/user-builders`, {
+				method: "POST",
+				headers: { "Content-Type": "application/json" },
+				credentials: "include",
+				body: JSON.stringify({
+					betterAuthUserId: session.data.user.id,
+					organizationId: orgBuilder.id,
+					permissions: {
+						chat: {
+							enabled: true,
+							components: ["web", "cctv", "social"],
+							lookbackWindow: "all",
+						},
+						interactions: true,
+						patterns: true,
+						teamManagement: true,
+						apiKeyManagement: true,
+					},
+				}),
+			});
+
+			if (!userBuilderResponse.ok) {
+				toast.error("Failed to create user builder");
+				return;
+			}
+
+			const userBuilder = await userBuilderResponse.json();
+
+			// Step 4: Create billing-builder
+			const billingBuilderResponse = await fetch(`${API_GATEWAY_URL}/api/v1/billing-builders`, {
+				method: "POST",
+				headers: { "Content-Type": "application/json" },
+				credentials: "include",
+				body: JSON.stringify({
+					organizationId: orgBuilder.id,
+				}),
+			});
+
+			if (!billingBuilderResponse.ok) {
+				toast.error("Failed to create billing builder");
+				return;
+			}
+
+			const billingBuilder = await billingBuilderResponse.json();
+
+			// Step 5: Update onboarding with all IDs
+			await submitOrganization.mutateAsync({
+				onboardingId,
+				input: {
+					betterAuthOrgId: org.id,
+					orgBuilderId: orgBuilder.id,
+					userBuilderId: userBuilder.id,
+					billingBuilderId: billingBuilder.id,
+				},
+			});
 
 			router.push("/choose-plan");
 
