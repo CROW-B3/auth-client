@@ -69,10 +69,10 @@ interface OnboardingApiResponse {
 }
 
 interface OrganizationStepInput {
-	organizationName: string;
-	slug: string;
 	betterAuthOrgId: string;
-	betterAuthUserId: string;
+	orgBuilderId: string;
+	userBuilderId: string;
+	billingBuilderId: string;
 }
 
 interface PlanStepInput {
@@ -236,6 +236,7 @@ const onboardingApi = {
 		organizationId: string;
 		organizationName: string;
 		inviterName: string;
+		inviterId: string;
 		permissions?: Record<string, unknown>;
 	}): Promise<{ success: boolean; sent: number; failed: number; errors: Array<{ email: string; error: string }> }> => {
 		const response = await fetch(`${API_GATEWAY_URL}/api/v1/auth/team-invitations/send-invites`, {
@@ -356,6 +357,7 @@ export const useSendTeamInvites = () => {
 			organizationId: string;
 			organizationName: string;
 			inviterName: string;
+			inviterId: string;
 			permissions?: Record<string, unknown>;
 		}) => onboardingApi.sendTeamInvites(input),
 	});
@@ -476,10 +478,11 @@ export const useDetermineAuthFlow = () => {
 
 /**
  * Route guard for onboarding pages.
- * Ensures users can't skip ahead to later steps without completing previous ones.
+ * Provides loading states for UX enhancement only.
+ * Middleware handles actual route protection and redirects.
  *
  * @param requiredStep - The step name this page requires (e.g., "team" for /invite-team)
- * @returns Object with loading state and redirect path if user should be redirected
+ * @returns Object with loading state for UI purposes
  */
 export const useOnboardingGuard = (requiredStep: typeof ONBOARDING_STEPS[number]['name']) => {
 	const { onboardingId } = useOnboardingStore();
@@ -488,41 +491,16 @@ export const useOnboardingGuard = (requiredStep: typeof ONBOARDING_STEPS[number]
 		queryKey: ["onboarding-guard", onboardingId, requiredStep],
 		queryFn: async () => {
 			if (!onboardingId) {
-				return { shouldRedirect: true, redirectTo: "/organization" };
+				return { isLoading: false };
 			}
 
 			const onboarding = await onboardingApi.getById(onboardingId);
 
 			if (!onboarding) {
-				return { shouldRedirect: true, redirectTo: "/organization" };
+				return { isLoading: false };
 			}
 
-			// If onboarding is completed, redirect to dashboard
-			if (onboarding.status === "completed") {
-				return { shouldRedirect: true, redirectTo: process.env.NEXT_PUBLIC_DASHBOARD_URL || "http://localhost:3002" };
-			}
-
-			const completedSteps = onboarding.completedSteps || [];
-			const requiredStepIndex = ONBOARDING_STEPS.findIndex(s => s.name === requiredStep);
-
-			if (requiredStepIndex === -1) {
-				return { shouldRedirect: false, redirectTo: null };
-			}
-
-			// Check if all previous steps are completed
-			const previousSteps = ONBOARDING_STEPS.slice(0, requiredStepIndex);
-			const allPreviousStepsCompleted = previousSteps.every(step =>
-				completedSteps.includes(step.name)
-			);
-
-			if (!allPreviousStepsCompleted) {
-				// Find the first incomplete step and redirect there
-				const targetRoute = getTargetRouteForOnboarding(onboarding);
-				return { shouldRedirect: true, redirectTo: targetRoute };
-			}
-
-			// User is on the correct page
-			return { shouldRedirect: false, redirectTo: null };
+			return { isLoading: false, onboarding };
 		},
 		enabled: !!onboardingId || requiredStep === "organization",
 		refetchOnWindowFocus: false,
