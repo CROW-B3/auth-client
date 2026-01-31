@@ -9,7 +9,6 @@ interface OnboardingState {
 	onboardingId: string | null;
 	betterAuthOrgId: string | null;
 	organizationName: string;
-	organizationSlug: string;
 	selectedPlans: PlanType[];
 	billingPeriod: BillingPeriod;
 	autoScale: boolean;
@@ -22,7 +21,6 @@ interface OnboardingActions {
 	setOnboardingId: (id: string | null) => void;
 	setBetterAuthOrgId: (id: string | null) => void;
 	setOrganizationName: (name: string) => void;
-	setOrganizationSlug: (slug: string) => void;
 	setSelectedPlans: (plans: PlanType[]) => void;
 	togglePlan: (plan: PlanType) => void;
 	setBillingPeriod: (period: BillingPeriod) => void;
@@ -40,7 +38,6 @@ const initialState: OnboardingState = {
 	onboardingId: null,
 	betterAuthOrgId: null,
 	organizationName: "",
-	organizationSlug: "",
 	selectedPlans: [],
 	billingPeriod: "annual",
 	autoScale: false,
@@ -61,7 +58,6 @@ export const useOnboardingStore = create<OnboardingStore>()(
 			setOnboardingId: (onboardingId) => set({ onboardingId }),
 			setBetterAuthOrgId: (betterAuthOrgId) => set({ betterAuthOrgId }),
 			setOrganizationName: (organizationName) => set({ organizationName }),
-			setOrganizationSlug: (slug) => set({ organizationSlug: slug }),
 			setSelectedPlans: (selectedPlans) => set({ selectedPlans }),
 
 			togglePlan: (plan) => {
