@@ -132,11 +132,21 @@ export default function InviteTeamPage() {
 
 			const validatedData = inviteTeamSchema.parse(formData);
 
+			const session = await import("@/lib/auth-client").then((m) => m.getSession());
+			const userData = session?.data?.user;
+
+			if (!userData?.id) {
+				toast.error("Session expired. Please sign in again.");
+				setIsSubmitting(false);
+				return;
+			}
+
 			const result = await sendInvites.mutateAsync({
 				emails: validatedData.emails,
 				organizationId: betterAuthOrgId,
 				organizationName: organizationName || "Your Organization",
-				inviterName: "Team Admin",
+				inviterName: userData.name || "Team Admin",
+				inviterId: userData.id,
 				permissions: validatedData.permissions,
 			});
 
@@ -171,26 +181,95 @@ export default function InviteTeamPage() {
 	};
 
 	const handleSkip = async () => {
-		try {
-			if (onboardingId) {
-				await submitTeam.mutateAsync(onboardingId);
-				await completeOnboarding.mutateAsync(onboardingId);
-			}
-			router.push("/success");
-		} catch {
-			router.push("/success");
-		}
+		await completeOnboardingProcess();
 	};
 
 	const handleFinish = async () => {
+		await completeOnboardingProcess();
+	};
+
+	const completeOnboardingProcess = async () => {
+		if (!onboardingId) {
+			toast.error("Onboarding not initialized");
+			return;
+		}
+
 		try {
-			if (onboardingId) {
-				await submitTeam.mutateAsync(onboardingId);
-				await completeOnboarding.mutateAsync(onboardingId);
+			const API_GATEWAY_URL = process.env.NEXT_PUBLIC_API_GATEWAY_URL || "http://localhost:8000";
+
+			// Step 1: Mark team step as complete
+			await submitTeam.mutateAsync(onboardingId);
+
+			// Step 2: Get onboarding data to retrieve builder IDs
+			const onboardingResponse = await fetch(
+				`${API_GATEWAY_URL}/api/v1/auth/onboarding/${onboardingId}`,
+				{ credentials: "include" }
+			);
+
+			if (!onboardingResponse.ok) {
+				toast.error("Failed to fetch onboarding data");
+				return;
 			}
-			router.push("/success");
-		} catch {
-			router.push("/success");
+
+			const { onboarding } = await onboardingResponse.json();
+
+			// Step 3: Finalize org-builder to create organization
+			if (onboarding.orgBuilderId) {
+				const finalizeOrgResponse = await fetch(
+					`${API_GATEWAY_URL}/api/v1/org-builders/${onboarding.orgBuilderId}/finalize`,
+					{
+						method: "POST",
+						headers: { "Content-Type": "application/json" },
+						credentials: "include",
+						body: JSON.stringify({}),
+					}
+				);
+
+				if (!finalizeOrgResponse.ok) {
+					toast.error("Failed to finalize organization");
+					return;
+				}
+			}
+
+			// Step 4: Finalize user-builder to create user with onboardingId
+			if (onboarding.userBuilderId) {
+				const session = await import("@/lib/auth-client").then((m) => m.getSession());
+				const userData = session?.data?.user;
+
+				if (!userData) {
+					toast.error("Session expired. Please sign in again.");
+					return;
+				}
+
+				const finalizeUserResponse = await fetch(
+					`${API_GATEWAY_URL}/api/v1/user-builders/${onboarding.userBuilderId}/finalize`,
+					{
+						method: "POST",
+						headers: { "Content-Type": "application/json" },
+						credentials: "include",
+						body: JSON.stringify({
+							email: userData.email,
+							name: userData.name,
+							onboardingId: onboardingId,
+						}),
+					}
+				);
+
+				if (!finalizeUserResponse.ok) {
+					toast.error("Failed to finalize user");
+					return;
+				}
+			}
+
+			// Step 5: Mark onboarding as completed
+			await completeOnboarding.mutateAsync(onboardingId);
+
+			// Step 6: Redirect to dashboard
+			const dashboardUrl = process.env.NEXT_PUBLIC_DASHBOARD_URL || "http://localhost:3002";
+			window.location.href = dashboardUrl;
+		} catch (error) {
+			console.error("Error completing onboarding:", error);
+			toast.error("Failed to complete onboarding. Please try again.");
 		}
 	};
 
