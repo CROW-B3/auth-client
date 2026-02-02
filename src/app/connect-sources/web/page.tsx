@@ -44,27 +44,9 @@ export default function ConnectWebPage() {
 	const apiKey = generatedApiKey || "crow_sk_demo_placeholder";
 	const initCode = getWebSDKInitCode(apiKey);
 
-	const handleConnect = async () => {
-		try {
-			if (onboardingId && generatedApiKey) {
-				await submitSource.mutateAsync({
-					onboardingId,
-					input: { sourceType: "web", apiKeyId: generatedApiKey },
-				});
-			}
-
-			setConnectionStatus("web", "connected");
-
-			const savedStatus = localStorage.getItem("crow_connection_status");
-			const statusMap = savedStatus ? JSON.parse(savedStatus) : {};
-			statusMap.web = "connected";
-			localStorage.setItem("crow_connection_status", JSON.stringify(statusMap));
-
-			toast.success("Web source connected!");
-			router.push("/connect-sources");
-		} catch {
-			toast.error("Failed to connect. Please try again.");
-		}
+	const handleContinue = () => {
+		toast.success("Setup instructions saved!");
+		router.push("/connect-sources");
 	};
 
 	return (
@@ -108,14 +90,20 @@ export default function ConnectWebPage() {
 						<p className="text-xs text-gray-500 px-1">Initialize once at app startup.</p>
 					</div>
 
+					<div className="space-y-2">
+						<p className="text-xs text-gray-500 px-1">
+							Copy the code above and integrate it into your application. Event verification happens automatically in your dashboard.
+						</p>
+					</div>
+
 					<div className="pt-4 pb-4">
 						<Button
 							variant="solid"
-							onClick={handleConnect}
-							disabled={submitSource.isPending || isGenerating}
+							onClick={handleContinue}
+							disabled={isGenerating}
 							className="w-full bg-violet-600 hover:bg-violet-700 shadow-glow hover:shadow-glow-hover disabled:opacity-50"
 						>
-							{submitSource.isPending ? "Connecting..." : isGenerating ? "Generating key..." : "Connect"}
+							{isGenerating ? "Generating key..." : "Continue"}
 						</Button>
 					</div>
 				</motion.div>
