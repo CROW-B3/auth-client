@@ -73,8 +73,16 @@ export default function CreateOrganizationPage() {
 			const API_GATEWAY_URL = process.env.NEXT_PUBLIC_API_GATEWAY_URL || "http://localhost:8000";
 
 			// Step 1: Create Better Auth organization
+			// Generate unique slug from organization name with timestamp
+			const baseSlug = validatedData.organizationName
+				.toLowerCase()
+				.replace(/[^a-z0-9]+/g, '-')
+				.replace(/^-+|-+$/g, '');
+			const slug = `${baseSlug}-${Date.now()}`;
+
 			const { data: org, error: orgError } = await organization.create({
 				name: validatedData.organizationName,
+				slug,
 			});
 
 			if (orgError || !org) {
@@ -91,7 +99,7 @@ export default function CreateOrganizationPage() {
 			}
 
 			// Step 2: Create org-builder
-			const orgBuilderResponse = await fetch(`${API_GATEWAY_URL}/api/v1/org-builders`, {
+			const orgBuilderResponse = await fetch(`${API_GATEWAY_URL}/api/v1/organizations/org-builders`, {
 				method: "POST",
 				headers: { "Content-Type": "application/json" },
 				credentials: "include",
@@ -109,7 +117,7 @@ export default function CreateOrganizationPage() {
 			const orgBuilder = await orgBuilderResponse.json();
 
 			// Step 3: Create user-builder
-			const userBuilderResponse = await fetch(`${API_GATEWAY_URL}/api/v1/user-builders`, {
+			const userBuilderResponse = await fetch(`${API_GATEWAY_URL}/api/v1/users/user-builders`, {
 				method: "POST",
 				headers: { "Content-Type": "application/json" },
 				credentials: "include",
@@ -138,7 +146,7 @@ export default function CreateOrganizationPage() {
 			const userBuilder = await userBuilderResponse.json();
 
 			// Step 4: Create billing-builder
-			const billingBuilderResponse = await fetch(`${API_GATEWAY_URL}/api/v1/billing-builders`, {
+			const billingBuilderResponse = await fetch(`${API_GATEWAY_URL}/api/v1/billing/billing-builders`, {
 				method: "POST",
 				headers: { "Content-Type": "application/json" },
 				credentials: "include",
@@ -280,9 +288,6 @@ export default function CreateOrganizationPage() {
 			</main>
 
 			<Footer
-				invitePrefix="Have an invite?"
-				inviteText="Accept invitation"
-				inviteHref="/accept-invite"
 				termsPrefix="By creating an account, you agree to"
 				termsLinks={[
 				{ text: "Terms", href: "/terms" },
