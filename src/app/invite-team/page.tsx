@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { AnimatedBackground, Button, Navbar, PageHeader, Select, EmailTagInput, PermissionToggle, PendingInviteCard  } from "@b3-crow/ui-kit";
+import { AnimatedBackground, Button, Navbar, PageHeader, Select, EmailTagInput, PermissionToggle, PendingInviteCard } from "@b3-crow/ui-kit";
 import { LuArrowRight, LuLoader, LuMessageCircle, LuNetwork, LuTrendingUp, LuUsers, LuKey } from "react-icons/lu";
 import { motion } from "framer-motion";
 import toast from "react-hot-toast";
@@ -216,7 +216,7 @@ export default function InviteTeamPage() {
 			// Step 3: Finalize org-builder to create organization
 			if (onboarding.orgBuilderId) {
 				const finalizeOrgResponse = await fetch(
-					`${API_GATEWAY_URL}/api/v1/org-builders/${onboarding.orgBuilderId}/finalize`,
+					`${API_GATEWAY_URL}/api/v1/organizations/org-builders/${onboarding.orgBuilderId}/finalize`,
 					{
 						method: "POST",
 						headers: { "Content-Type": "application/json" },
@@ -242,7 +242,7 @@ export default function InviteTeamPage() {
 				}
 
 				const finalizeUserResponse = await fetch(
-					`${API_GATEWAY_URL}/api/v1/user-builders/${onboarding.userBuilderId}/finalize`,
+					`${API_GATEWAY_URL}/api/v1/users/user-builders/${onboarding.userBuilderId}/finalize`,
 					{
 						method: "POST",
 						headers: { "Content-Type": "application/json" },
@@ -388,31 +388,18 @@ export default function InviteTeamPage() {
 													</label>
 													<div className="flex gap-2">
 														{["web", "cctv", "social"].map((component) => (
-															<label
+															<button
 																key={component}
-																className={`flex items-center gap-1.5 cursor-pointer select-none px-2 py-1 rounded-full transition-colors ${
+																type="button"
+																onClick={() => handleComponentToggle(component)}
+																className={`px-3 py-1.5 rounded-lg text-[10px] font-medium transition-all ${
 																	chatComponents.includes(component)
-																		? "bg-violet-500/20 border border-violet-500/30"
-																		: "bg-white/5 border border-white/10 hover:bg-white/10"
+																		? "bg-violet-500 text-white shadow-md"
+																		: "bg-white/5 text-gray-400 hover:bg-white/10 border border-white/10"
 																}`}
 															>
-																<input
-																	type="checkbox"
-																	checked={chatComponents.includes(component)}
-																	onChange={() => handleComponentToggle(component)}
-																	className="rounded-full text-violet-500 border-none bg-transparent focus:ring-2 focus:ring-violet-500 focus:ring-offset-2 focus:ring-offset-gray-900 w-3 h-3"
-																	aria-label={`Enable ${component} component`}
-																/>
-																<span
-																	className={`text-[10px] font-medium ${
-																		chatComponents.includes(component)
-																			? "text-violet-100"
-																			: "text-gray-400"
-																	}`}
-																>
-																	{component.charAt(0).toUpperCase() + component.slice(1)}
-																</span>
-															</label>
+																{component.charAt(0).toUpperCase() + component.slice(1)}
+															</button>
 														))}
 													</div>
 													<p className="text-[9px] text-gray-600 mt-1">
