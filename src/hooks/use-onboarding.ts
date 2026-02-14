@@ -426,24 +426,15 @@ export const useUserByAuthId = (betterAuthUserId: string | undefined) => {
 	});
 };
 
-const findFirstIncompleteStep = (completedSteps: string[]): typeof ONBOARDING_STEPS[number] => {
-	for (const step of ONBOARDING_STEPS) {
-		if (!completedSteps.includes(step.name)) {
-			return step;
-		}
-	}
-	return ONBOARDING_STEPS[ONBOARDING_STEPS.length - 1];
+const findFirstIncompleteOnboardingStep = (completedSteps: string[]): typeof ONBOARDING_STEPS[number] => {
+	return ONBOARDING_STEPS.find((step) => !completedSteps.includes(step.name)) ?? ONBOARDING_STEPS[ONBOARDING_STEPS.length - 1];
 };
 
-const getTargetRouteForOnboarding = (onboarding: OnboardingRecord): string => {
+const determineTargetRouteForOnboarding = (onboarding: OnboardingRecord): string => {
 	const completedSteps = onboarding.completedSteps || [];
+	if (completedSteps.length === 0) return "/organization";
 
-	if (completedSteps.length === 0) {
-		return "/organization";
-	}
-
-	const firstIncompleteStep = findFirstIncompleteStep(completedSteps);
-	return firstIncompleteStep.route;
+	return findFirstIncompleteOnboardingStep(completedSteps).route;
 };
 
 export const determineAuthFlowDestination = async (betterAuthUserId: string): Promise<AuthFlowResult> => {
@@ -463,7 +454,7 @@ export const determineAuthFlowDestination = async (betterAuthUserId: string): Pr
 		return { destination: "onboarding", targetRoute: "/organization" };
 	}
 
-	const targetRoute = getTargetRouteForOnboarding(onboardingResult.onboarding);
+	const targetRoute = determineTargetRouteForOnboarding(onboardingResult.onboarding);
 
 	return {
 		destination: "onboarding",
