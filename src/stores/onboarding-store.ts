@@ -70,11 +70,12 @@ export const useOnboardingStore = create<OnboardingStore>()(
 
 			togglePlan: (plan) => {
 				const { selectedPlans } = get();
-				if (selectedPlans.includes(plan)) {
-					set({ selectedPlans: selectedPlans.filter((p) => p !== plan) });
-				} else if (selectedPlans.length < 3) {
-					set({ selectedPlans: [...selectedPlans, plan] });
-				}
+				const planIsAlreadySelected = selectedPlans.includes(plan);
+
+				if (planIsAlreadySelected) return set({ selectedPlans: selectedPlans.filter((p) => p !== plan) });
+				if (selectedPlans.length >= 3) return;
+
+				set({ selectedPlans: [...selectedPlans, plan] });
 			},
 
 			setBillingPeriod: (billingPeriod) => set({ billingPeriod }),
