@@ -10,8 +10,7 @@ import { motion } from "framer-motion";
 import toast from "react-hot-toast";
 import { signUpSchema, type SignUpFormData } from "@/lib/validations";
 import { type FormErrors } from "@/types";
-import { signIn, signUp, getSession } from "@/lib/auth-client";
-import { useDetermineAuthFlow } from "@/hooks/use-onboarding";
+import { signIn, signUp } from "@/lib/auth-client";
 
 const isUserAlreadyExistsError = (error: { code?: string; message?: string }): boolean => {
 	if (error.code === "USER_ALREADY_EXISTS") return true;
@@ -32,22 +31,18 @@ function SignUpContent() {
 	const [isSubmitting, setIsSubmitting] = useState(false);
 	const [pendingInvitation, setPendingInvitation] = useState<PendingInvitation | null>(null);
 	const [prefillEmail, setPrefillEmail] = useState("");
-	const determineAuthFlow = useDetermineAuthFlow();
 
 	useEffect(() => {
-		// Check for pending invitation from accept-invite page
 		const storedInvitation = sessionStorage.getItem("pendingInvitation");
 		if (storedInvitation) {
 			try {
 				const invitation = JSON.parse(storedInvitation) as PendingInvitation;
 				setPendingInvitation(invitation);
 				setPrefillEmail(invitation.email);
-			} catch (error) {
-				console.error("Failed to parse pending invitation:", error);
+			} catch {
 			}
 		}
 
-		// Check for email in URL params
 		const emailParam = searchParams.get("email");
 		if (emailParam && !prefillEmail) {
 			setPrefillEmail(emailParam);
@@ -69,7 +64,6 @@ function SignUpContent() {
 		try {
 			const validatedData = signUpSchema.parse(data);
 
-			// Check if email matches pending invitation
 			if (pendingInvitation && validatedData.email !== pendingInvitation.email) {
 				toast.error(`Please use the invited email: ${pendingInvitation.email}`);
 				setIsSubmitting(false);
@@ -92,18 +86,15 @@ function SignUpContent() {
 				return;
 			}
 
-			const session = await getSession();
-			if (!session?.data?.user?.id) {
-				toast.error("Failed to get session");
-				return;
-			}
-
-			// If there's a pending invitation, finalize it by adding user to organization
 			if (pendingInvitation) {
 				try {
+					const session = await import("@/lib/auth-client").then((m) => m.getSession());
+					if (!session?.data?.user?.id) {
+						throw new Error("Session not found");
+					}
+
 					const API_GATEWAY_URL = process.env.NEXT_PUBLIC_API_GATEWAY_URL || "http://localhost:8000";
 
-					// Create user-builder first
 					const builderResponse = await fetch(`${API_GATEWAY_URL}/api/v1/users/user-builders`, {
 						method: "POST",
 						headers: { "Content-Type": "application/json" },
@@ -119,9 +110,8 @@ function SignUpContent() {
 						throw new Error("Failed to create user builder");
 					}
 
-					const builderData = await builderResponse.json();
+					const builderData = await builderResponse.json() as { id: string };
 
-					// Finalize user-builder to create actual user
 					const finalizeResponse = await fetch(`${API_GATEWAY_URL}/api/v1/users/user-builders/${builderData.id}/finalize`, {
 						method: "POST",
 						headers: { "Content-Type": "application/json" },
@@ -137,33 +127,25 @@ function SignUpContent() {
 						throw new Error("Failed to finalize user");
 					}
 
-					// Clear pending invitation
 					sessionStorage.removeItem("pendingInvitation");
 
 					toast.success(`Welcome to ${pendingInvitation.organizationName}!`);
 
-					// Redirect to dashboard
 					const dashboardUrl = process.env.NEXT_PUBLIC_DASHBOARD_URL || "http://localhost:3002";
 					setTimeout(() => {
 						window.location.href = dashboardUrl;
 					}, 1000);
 					return;
-				} catch (inviteError) {
-					console.error("Failed to process invitation:", inviteError);
+				} catch {
 					toast.error("Account created but failed to join organization. Please contact support.");
 				}
 			}
 
-			// Normal flow (no invitation)
-			const result = await determineAuthFlow.mutateAsync(session.data.user.id);
+			toast.success("Account created successfully!");
 
-			if (result.destination === "dashboard") {
-				const dashboardUrl = process.env.NEXT_PUBLIC_DASHBOARD_URL || "http://localhost:3002";
-				window.location.href = dashboardUrl;
-				return;
-			}
+			await new Promise(resolve => setTimeout(resolve, 500));
 
-			router.push(result.targetRoute || "/organization");
+			window.location.href = "/organization";
 
 		} catch (error) {
 			if (error instanceof z.ZodError) {
@@ -229,7 +211,7 @@ function SignUpContent() {
 								animate={{ opacity: 1, y: 0 }}
 								transition={{ delay: 0.1 }}
 							>
-								✨ You've been invited to join as a member
+								✨ You&apos;ve been invited to join as a member
 							</motion.div>
 						</>
 					) : (

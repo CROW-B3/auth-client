@@ -2,11 +2,11 @@ import type { NextConfig } from "next";
 
 const ContentSecurityPolicy = `
   default-src 'self';
-  script-src 'self' https://js.stripe.com 'unsafe-inline' 'unsafe-eval';
+  script-src 'self' https://js.stripe.com https://static.cloudflareinsights.com 'unsafe-inline' 'unsafe-eval';
   style-src 'self' https://js.stripe.com 'unsafe-inline';
-  img-src 'self' https://*.stripe.com https://*.stripecdn.com https://*.crowai.dev data: blob:;
+  img-src 'self' https://*.stripe.com https://*.stripecdn.com https://*.crowai.dev https://lh3.googleusercontent.com data: blob:;
   font-src 'self' data:;
-  connect-src 'self' http://localhost:* https://*.crowai.dev https://api.stripe.com https://r.stripe.com https://q.stripe.com https://m.stripe.com https://m.stripe.network;
+  connect-src 'self' http://localhost:* https://*.crowai.dev https://api.stripe.com https://r.stripe.com https://q.stripe.com https://m.stripe.com https://m.stripe.network https://lh3.googleusercontent.com;
   frame-src 'self' https://js.stripe.com https://hooks.stripe.com https://checkout.stripe.com https://*.stripe.com https://*.stripecdn.com https://newassets.hcaptcha.com https://*.hcaptcha.com;
   worker-src 'self' blob:;
   child-src 'self' blob: https://js.stripe.com;

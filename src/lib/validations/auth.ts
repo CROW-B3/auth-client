@@ -1,6 +1,5 @@
 import { z } from "zod";
 
-// Base field schemas
 const emailSchema = z
 	.string()
 	.min(1, "Email is required")
@@ -30,7 +29,6 @@ const passwordConfirmationSchema = z.object({
 	path: ["confirmPassword"],
 });
 
-// Main schemas
 export const signUpSchema = z.object({
 	fullname: fullnameSchema,
 	email: emailSchema,
