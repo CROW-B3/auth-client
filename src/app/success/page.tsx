@@ -1,14 +1,11 @@
 "use client";
 
-import { useRouter } from "next/navigation";
 import { AnimatedBackground, Button, Navbar, PageHeader, InvitationDetailsCard } from "@b3-crow/ui-kit";
 import { LuArrowRight } from "react-icons/lu";
 import { motion } from "framer-motion";
 import { MOCK_SUCCESS_FIELDS } from "@/lib/constants/mock-data";
 
 export default function SuccessPage() {
-	const router = useRouter();
-
 	const handleContinue = () => {
 		const dashboardUrl = process.env.NEXT_PUBLIC_DASHBOARD_URL;
 		if (dashboardUrl) {

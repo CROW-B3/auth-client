@@ -50,7 +50,7 @@ export default function ConnectSocialPage() {
 			localStorage.setItem("crow_connection_status", JSON.stringify(statusMap));
 
 			toast.success("Starting social sync...");
-			router.push("/connect-sources");
+			router.push("/setup-components");
 		} catch {
 			toast.error("Failed to start sync. Please try again.");
 		}
@@ -58,7 +58,7 @@ export default function ConnectSocialPage() {
 
 	const handleSkip = () => {
 		toast.success("Skipping social setup. You can connect later in Settings.");
-		router.push("/connect-sources");
+		router.push("/setup-components");
 	};
 
 	const handleConnectAccount = (platform: "twitter" | "reddit" | "instagram" | "tiktok" | "news") => {

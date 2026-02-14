@@ -9,15 +9,7 @@ export const WEB_SDK_INSTALL_COMMANDS: Record<PackageManager, string> = {
 
 export const getWebSDKInitCode = (apiKey: string) => `import { initializeCrow } from '@b3-crow/website-hook-sdk';
 
-// Initialize the SDK
 const crow = await initializeCrow({
   projectId: '${apiKey}',
-  debug: true // optional - enables console logging
-});
-
-// SDK automatically tracks:
-// - Page views
-// - Click events
-// - Form interactions
-// - Custom events
-// - Error tracking`;
+  debug: true
+});`;

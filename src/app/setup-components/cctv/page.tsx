@@ -63,7 +63,7 @@ export default function ConnectCCTVPage() {
 			localStorage.setItem("crow_connection_status", JSON.stringify(statusMap));
 
 			toast.success("CCTV source connected!");
-			router.push("/connect-sources");
+			router.push("/setup-components");
 		} catch {
 			toast.error("Failed to connect. Please try again.");
 		}

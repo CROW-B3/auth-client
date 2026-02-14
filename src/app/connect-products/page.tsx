@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { AnimatedBackground, Navbar, PageHeader, Button, Input } from "@b3-crow/ui-kit";
 import { LuLink, LuUpload, LuFile, LuX, LuArrowRight, LuSkipForward, LuCheck } from "react-icons/lu";
@@ -8,14 +8,7 @@ import { motion } from "framer-motion";
 import toast from "react-hot-toast";
 import { useOnboardingStore } from "@/stores/onboarding-store";
 import { useSubmitProducts, useOnboardingGuard } from "@/hooks/use-onboarding";
-import { CrawlProgressPopover } from "@/components/crawl-progress-popover";
-
 type UploadMethod = "url" | "file" | null;
-
-interface CrawlJob {
-  jobId: string;
-  progressUrl: string;
-}
 
 export default function ConnectProductsPage() {
 	const router = useRouter();
@@ -24,20 +17,11 @@ export default function ConnectProductsPage() {
 	const [feedUrl, setFeedUrl] = useState("");
 	const [uploadedFile, setUploadedFile] = useState<File | null>(null);
 	const [urlError, setUrlError] = useState("");
-	const [crawlJob, setCrawlJob] = useState<CrawlJob | null>(null);
-	const [isCrawling, setIsCrawling] = useState(false);
 
 	const { onboardingId } = useOnboardingStore();
 	const submitProducts = useSubmitProducts();
 
-	// Route guard
-	const guard = useOnboardingGuard("products");
-
-	useEffect(() => {
-		if (guard.data?.shouldRedirect && guard.data.redirectTo) {
-			router.push(guard.data.redirectTo);
-		}
-	}, [guard.data, router]);
+	useOnboardingGuard("products");
 
 	const validateUrl = (url: string): boolean => {
 		if (!url.trim()) {
@@ -109,8 +93,6 @@ export default function ConnectProductsPage() {
 		}
 
 		try {
-			setIsCrawling(true);
-
 			if (onboardingId) {
 				let sourceType: "url" | "csv" | "json";
 				let sourceValue: string;
@@ -123,54 +105,38 @@ export default function ConnectProductsPage() {
 					sourceValue = await readFileContent(uploadedFile);
 				} else {
 					toast.error("No file selected");
-					setIsCrawling(false);
 					return;
 				}
 
-				// Call the crawl-now endpoint for real-time progress
-				const response = await fetch(`${process.env.NEXT_PUBLIC_API_GATEWAY_URL}/api/v1/crawler-jobs/crawl-now`, {
+				fetch(`${process.env.NEXT_PUBLIC_API_GATEWAY_URL}/api/v1/crawler-jobs/crawl-now`, {
 					method: "POST",
 					headers: { "Content-Type": "application/json" },
 					body: JSON.stringify({
-						organizationId: onboardingId, // Using onboardingId temporarily
+						organizationId: onboardingId,
 						onboardingId,
 						sourceType,
 						sourceValue,
 					}),
+				}).then(() => {
+					toast.success("Product crawl started in the background");
+				}).catch(() => {
+					toast.error("Failed to start crawling");
 				});
 
-				if (!response.ok) {
-					throw new Error("Failed to start crawl");
-				}
-
-				const data = await response.json();
-				setCrawlJob({ jobId: data.job.id, progressUrl: data.progressUrl });
-
-				// Also submit to onboarding service
 				await submitProducts.mutateAsync({
 					onboardingId,
 					input: { sourceType, sourceValue },
 				});
-			}
-		} catch (error) {
-			toast.error("Failed to start crawling. Please try again.");
-			setIsCrawling(false);
-			setCrawlJob(null);
-		}
-	};
 
-	const handleCrawlComplete = (success: boolean) => {
-		setIsCrawling(false);
-		if (success) {
-			toast.success("Products crawled successfully!");
-			setTimeout(() => router.push("/connect-sources"), 2000);
-		} else {
-			toast.error("Crawling failed. Please try again.");
+				router.push("/setup-components");
+			}
+		} catch {
+			toast.error("Failed to start crawling. Please try again.");
 		}
 	};
 
 	const handleSkip = () => {
-		router.push("/connect-sources");
+		router.push("/setup-components");
 	};
 
 	return (
@@ -281,7 +247,7 @@ export default function ConnectProductsPage() {
 						)}
 					</div>
 
-					{activeMethod && !crawlJob && (
+					{activeMethod && (
 						<motion.div
 							className="flex items-center gap-2 p-3 bg-violet-500/10 border border-violet-500/20 rounded-xl"
 							initial={{ opacity: 0, y: 10 }}
@@ -294,13 +260,6 @@ export default function ConnectProductsPage() {
 						</motion.div>
 					)}
 
-					{crawlJob && (
-						<CrawlProgressPopover
-							jobId={crawlJob.jobId}
-							progressUrl={crawlJob.progressUrl}
-							onComplete={handleCrawlComplete}
-						/>
-					)}
 				</motion.div>
 
 				<motion.div
