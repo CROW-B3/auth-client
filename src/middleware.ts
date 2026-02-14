@@ -9,7 +9,7 @@ const PUBLIC_ROUTES = [
 	"/terms",
 	"/privacy",
 	"/",
-	"/organization", // Temporarily public to fix session issue
+	"/organization",
 	"/choose-modules",
 	"/checkout",
 	"/checkout/cancel",
@@ -47,17 +47,17 @@ interface SessionData {
 	user: SessionUser;
 }
 
-async function getSession(request: NextRequest): Promise<SessionData | null> {
+function extractRequestCookieHeaders(request: NextRequest): Record<string, string> {
+	return { cookie: request.headers.get("cookie") || "" };
+}
+
+async function fetchSessionFromGateway(request: NextRequest): Promise<SessionData | null> {
 	try {
 		const response = await fetch(`${API_GATEWAY_URL}/api/v1/auth/get-session`, {
-			headers: {
-				cookie: request.headers.get("cookie") || "",
-			},
+			headers: extractRequestCookieHeaders(request),
 		});
 
-		if (!response.ok) {
-			return null;
-		}
+		if (!response.ok) return null;
 
 		const data = await response.json() as { data?: SessionData };
 		return data.data || null;
@@ -66,21 +66,13 @@ async function getSession(request: NextRequest): Promise<SessionData | null> {
 	}
 }
 
-async function getOnboardingStatus(userId: string, request: NextRequest) {
+async function fetchOnboardingStatusByUserId(userId: string, request: NextRequest) {
 	try {
 		const response = await fetch(`${API_GATEWAY_URL}/api/v1/auth/onboarding/user/${userId}`, {
-			headers: {
-				cookie: request.headers.get("cookie") || "",
-			},
+			headers: extractRequestCookieHeaders(request),
 		});
 
-		if (response.status === 404) {
-			return null;
-		}
-
-		if (!response.ok) {
-			return null;
-		}
+		if (response.status === 404 || !response.ok) return null;
 
 		const data = await response.json() as { onboarding?: { currentStep: string; completedSteps: string } };
 		return data.onboarding || null;
@@ -89,21 +81,13 @@ async function getOnboardingStatus(userId: string, request: NextRequest) {
 	}
 }
 
-async function getUserByAuthId(userId: string, request: NextRequest): Promise<{ organizationId?: string } | null> {
+async function fetchUserByAuthenticationId(userId: string, request: NextRequest): Promise<{ organizationId?: string } | null> {
 	try {
 		const response = await fetch(`${API_GATEWAY_URL}/api/v1/users/by-auth-id/${userId}`, {
-			headers: {
-				cookie: request.headers.get("cookie") || "",
-			},
+			headers: extractRequestCookieHeaders(request),
 		});
 
-		if (response.status === 404) {
-			return null;
-		}
-
-		if (!response.ok) {
-			return null;
-		}
+		if (response.status === 404 || !response.ok) return null;
 
 		return await response.json() as { organizationId?: string };
 	} catch {
@@ -111,62 +95,63 @@ async function getUserByAuthId(userId: string, request: NextRequest): Promise<{ 
 	}
 }
 
+function isStaticOrApiRoute(pathname: string): boolean {
+	return pathname.startsWith("/api") || pathname.startsWith("/_next") || pathname.includes(".") || pathname.startsWith("/setup-components/");
+}
+
+function buildRedirectToLogin(request: NextRequest, pathname: string): NextResponse {
+	const loginUrl = request.nextUrl.clone();
+	loginUrl.pathname = "/login";
+	loginUrl.searchParams.set("redirect", pathname);
+	return NextResponse.redirect(loginUrl);
+}
+
+function buildRedirectToDashboard(): NextResponse {
+	const dashboardUrl = process.env.NEXT_PUBLIC_DASHBOARD_URL || "http://localhost:3002";
+	return NextResponse.redirect(new URL(dashboardUrl));
+}
+
+function buildRedirectToPath(request: NextRequest, targetPath: string): NextResponse {
+	const redirectUrl = request.nextUrl.clone();
+	redirectUrl.pathname = targetPath;
+	return NextResponse.redirect(redirectUrl);
+}
+
+function resolveOnboardingRedirectPath(completedSteps: string[], requestedStep: number): string | null {
+	if (completedSteps.length >= requestedStep) return null;
+
+	const targetRoute = ONBOARDING_ROUTES.find((route) => route.step === completedSteps.length + 1);
+	return targetRoute?.path ?? null;
+}
+
+async function handleOnboardingRouteAccess(request: NextRequest, sessionUserId: string, onboardingRoute: typeof ONBOARDING_ROUTES[number]): Promise<NextResponse> {
+	const user = await fetchUserByAuthenticationId(sessionUserId, request);
+	if (user?.organizationId) return buildRedirectToDashboard();
+
+	if (onboardingRoute.path === "/complete-profile") return NextResponse.next();
+
+	const onboarding = await fetchOnboardingStatusByUserId(sessionUserId, request);
+	if (!onboarding) return buildRedirectToPath(request, "/organization");
+
+	const completedSteps = JSON.parse(onboarding.completedSteps || "[]");
+	const redirectPath = resolveOnboardingRedirectPath(completedSteps, onboardingRoute.step);
+
+	if (redirectPath) return buildRedirectToPath(request, redirectPath);
+
+	return NextResponse.next();
+}
+
 export async function middleware(request: NextRequest) {
 	const { pathname } = request.nextUrl;
 
-	if (PUBLIC_ROUTES.includes(pathname)) {
-		return NextResponse.next();
-	}
+	if (PUBLIC_ROUTES.includes(pathname)) return NextResponse.next();
+	if (isStaticOrApiRoute(pathname)) return NextResponse.next();
 
-	if (pathname.startsWith("/api") || pathname.startsWith("/_next") || pathname.includes(".") || pathname.startsWith("/setup-components/")) {
-		return NextResponse.next();
-	}
+	const session = await fetchSessionFromGateway(request);
+	if (!session?.user?.id) return buildRedirectToLogin(request, pathname);
 
-	const session = await getSession(request);
-
-	if (!session?.user?.id) {
-		const url = request.nextUrl.clone();
-		url.pathname = "/login";
-		url.searchParams.set("redirect", pathname);
-		return NextResponse.redirect(url);
-	}
-
-	const onboardingRoute = ONBOARDING_ROUTES.find((route) => pathname === route.path);
-
-	if (onboardingRoute) {
-		const user = await getUserByAuthId(session.user.id, request);
-
-		if (user && user.organizationId) {
-			const dashboardUrl = process.env.NEXT_PUBLIC_DASHBOARD_URL || "http://localhost:3002";
-			return NextResponse.redirect(new URL(dashboardUrl));
-		}
-
-		if (pathname === "/complete-profile") {
-			return NextResponse.next();
-		}
-
-		const onboarding = await getOnboardingStatus(session.user.id, request);
-
-		if (!onboarding) {
-			const url = request.nextUrl.clone();
-			url.pathname = "/organization";
-			return NextResponse.redirect(url);
-		}
-
-		const completedSteps = JSON.parse(onboarding.completedSteps || "[]");
-		const currentStep = onboardingRoute.step;
-
-		if (completedSteps.length < currentStep) {
-			const targetRoute = ONBOARDING_ROUTES.find((r) => r.step === completedSteps.length + 1);
-			if (targetRoute) {
-				const url = request.nextUrl.clone();
-				url.pathname = targetRoute.path;
-				return NextResponse.redirect(url);
-			}
-		}
-
-		return NextResponse.next();
-	}
+	const matchedOnboardingRoute = ONBOARDING_ROUTES.find((route) => pathname === route.path);
+	if (matchedOnboardingRoute) return handleOnboardingRouteAccess(request, session.user.id, matchedOnboardingRoute);
 
 	return NextResponse.next();
 }
