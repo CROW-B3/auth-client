@@ -8,6 +8,7 @@ import { z } from "zod";
 import { motion } from "framer-motion";
 import toast from "react-hot-toast";
 import { getSession } from "@/lib/auth-client";
+import { setPendingProfilePicture } from "@/stores/onboarding-store";
 import Image from "next/image";
 
 const completeProfileSchema = z.object({
@@ -25,7 +26,7 @@ export default function CompleteProfilePage() {
 	const [name, setName] = useState("");
 	const [profilePicture, setProfilePicture] = useState<File | null>(null);
 	const [previewUrl, setPreviewUrl] = useState<string | null>(null);
-	const [userId, setUserId] = useState<string | null>(null);
+	const [, setUserId] = useState<string | null>(null);
 	const fileInputRef = useRef<HTMLInputElement>(null);
 
 	useEffect(() => {
@@ -53,8 +54,7 @@ export default function CompleteProfilePage() {
 
 				setUserId(session.data.user.id);
 				setIsLoading(false);
-			} catch (error) {
-				console.error("Error checking session:", error);
+			} catch {
 				toast.error("Failed to load profile. Please try again.");
 				router.push("/login");
 			}
@@ -130,70 +130,12 @@ export default function CompleteProfilePage() {
 		const formValues = Object.fromEntries(formData.entries());
 
 		try {
-			const validatedData = completeProfileSchema.parse(formValues);
-
-			if (!userId) {
-				toast.error("User ID not found. Please sign in again.");
-				router.push("/login");
-				return;
-			}
-
-			const API_GATEWAY_URL = process.env.NEXT_PUBLIC_API_GATEWAY_URL || "http://localhost:8000";
-
-			let profilePictureUrl: string | null = null;
+			completeProfileSchema.parse(formValues);
 
 			if (profilePicture) {
-				const uploadFormData = new FormData();
-				uploadFormData.append("file", profilePicture);
-
-				const uploadResponse = await fetch(
-					`${API_GATEWAY_URL}/api/v1/users/${userId}/profile-picture`,
-					{
-						method: "POST",
-						body: uploadFormData,
-						credentials: "include",
-					}
-				);
-
-				if (!uploadResponse.ok) {
-					const errorText = await uploadResponse.text();
-					console.error("Upload error:", errorText);
-					toast.error("Failed to upload profile picture");
-					return;
-				}
-
-				const uploadResult = await uploadResponse.json();
-				profilePictureUrl = uploadResult.url;
+				setPendingProfilePicture(profilePicture);
 			}
 
-			const updatePayload: { name: string; profilePictureUrl?: string } = {
-				name: validatedData.name,
-			};
-
-			if (profilePictureUrl) {
-				updatePayload.profilePictureUrl = profilePictureUrl;
-			}
-
-			const updateResponse = await fetch(
-				`${API_GATEWAY_URL}/api/v1/users/${userId}/profile`,
-				{
-					method: "PATCH",
-					headers: {
-						"Content-Type": "application/json",
-					},
-					body: JSON.stringify(updatePayload),
-					credentials: "include",
-				}
-			);
-
-			if (!updateResponse.ok) {
-				const errorText = await updateResponse.text();
-				console.error("Update error:", errorText);
-				toast.error("Failed to update profile");
-				return;
-			}
-
-			toast.success("Profile completed successfully!");
 			router.push("/organization");
 		} catch (error) {
 			if (error instanceof z.ZodError) {
@@ -210,7 +152,6 @@ export default function CompleteProfilePage() {
 				setErrors(newErrors);
 				toast.error("Please fix the errors in the form");
 			} else {
-				console.error("An unexpected error occurred:", error);
 				toast.error("An unexpected error occurred. Please try again.");
 			}
 		} finally {

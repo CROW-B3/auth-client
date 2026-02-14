@@ -1,5 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useOnboardingStore } from "@/stores/onboarding-store";
+import { createAuthHeaders } from "@/lib/auth-token";
 
 const API_GATEWAY_URL = process.env.NEXT_PUBLIC_API_GATEWAY_URL || "http://localhost:8000";
 
@@ -22,10 +23,10 @@ interface AuthFlowResult {
 
 const ONBOARDING_STEPS = [
 	{ step: 1, name: "organization", route: "/organization" },
-	{ step: 2, name: "plan", route: "/choose-plan" },
+	{ step: 2, name: "modules", route: "/choose-modules" },
 	{ step: 3, name: "checkout", route: "/checkout" },
 	{ step: 4, name: "products", route: "/connect-products" },
-	{ step: 5, name: "sources", route: "/connect-sources" },
+	{ step: 5, name: "sources", route: "/setup-components" },
 	{ step: 6, name: "team", route: "/invite-team" },
 ] as const;
 
@@ -96,6 +97,7 @@ interface CheckoutStepInput {
 }
 
 interface CheckoutSessionInput {
+	onboardingId: string;
 	billingBuilderId: string;
 	successUrl: string;
 	cancelUrl: string;
@@ -108,9 +110,10 @@ interface CheckoutSessionResponse {
 
 const onboardingApi = {
 	start: async (betterAuthUserId: string): Promise<StartOnboardingResponse> => {
+		const headers = await createAuthHeaders();
 		const response = await fetch(`${API_GATEWAY_URL}/api/v1/auth/onboarding/start`, {
 			method: "POST",
-			headers: { "Content-Type": "application/json" },
+			headers,
 			credentials: "include",
 			body: JSON.stringify({ betterAuthUserId }),
 		});
@@ -139,9 +142,10 @@ const onboardingApi = {
 	},
 
 	submitOrganization: async (onboardingId: string, input: OrganizationStepInput): Promise<OnboardingRecord> => {
+		const headers = await createAuthHeaders();
 		const response = await fetch(`${API_GATEWAY_URL}/api/v1/auth/onboarding/${onboardingId}/step/organization`, {
 			method: "PATCH",
-			headers: { "Content-Type": "application/json" },
+			headers,
 			credentials: "include",
 			body: JSON.stringify(input),
 		});
@@ -151,9 +155,10 @@ const onboardingApi = {
 	},
 
 	submitPlan: async (onboardingId: string, input: PlanStepInput): Promise<OnboardingRecord> => {
+		const headers = await createAuthHeaders();
 		const response = await fetch(`${API_GATEWAY_URL}/api/v1/auth/onboarding/${onboardingId}/step/plan`, {
 			method: "PATCH",
-			headers: { "Content-Type": "application/json" },
+			headers,
 			credentials: "include",
 			body: JSON.stringify(input),
 		});
@@ -163,9 +168,10 @@ const onboardingApi = {
 	},
 
 	submitCheckout: async (onboardingId: string, input: CheckoutStepInput): Promise<OnboardingRecord> => {
+		const headers = await createAuthHeaders();
 		const response = await fetch(`${API_GATEWAY_URL}/api/v1/auth/onboarding/${onboardingId}/step/checkout`, {
 			method: "PATCH",
-			headers: { "Content-Type": "application/json" },
+			headers,
 			credentials: "include",
 			body: JSON.stringify(input),
 		});
@@ -175,9 +181,10 @@ const onboardingApi = {
 	},
 
 	submitProducts: async (onboardingId: string, input: ProductsStepInput): Promise<OnboardingRecord> => {
+		const headers = await createAuthHeaders();
 		const response = await fetch(`${API_GATEWAY_URL}/api/v1/auth/onboarding/${onboardingId}/step/products`, {
 			method: "PATCH",
-			headers: { "Content-Type": "application/json" },
+			headers,
 			credentials: "include",
 			body: JSON.stringify(input),
 		});
@@ -187,9 +194,10 @@ const onboardingApi = {
 	},
 
 	submitSource: async (onboardingId: string, input: SourceStepInput): Promise<OnboardingRecord> => {
+		const headers = await createAuthHeaders();
 		const response = await fetch(`${API_GATEWAY_URL}/api/v1/auth/onboarding/${onboardingId}/step/sources`, {
 			method: "PATCH",
-			headers: { "Content-Type": "application/json" },
+			headers,
 			credentials: "include",
 			body: JSON.stringify(input),
 		});
@@ -199,9 +207,10 @@ const onboardingApi = {
 	},
 
 	submitTeam: async (onboardingId: string): Promise<OnboardingRecord> => {
+		const headers = await createAuthHeaders();
 		const response = await fetch(`${API_GATEWAY_URL}/api/v1/auth/onboarding/${onboardingId}/step/team`, {
 			method: "PATCH",
-			headers: { "Content-Type": "application/json" },
+			headers,
 			credentials: "include",
 		});
 		if (!response.ok) throw new Error("Failed to submit team step");
@@ -210,9 +219,10 @@ const onboardingApi = {
 	},
 
 	complete: async (onboardingId: string): Promise<OnboardingRecord> => {
+		const headers = await createAuthHeaders();
 		const response = await fetch(`${API_GATEWAY_URL}/api/v1/auth/onboarding/${onboardingId}/complete`, {
 			method: "POST",
-			headers: { "Content-Type": "application/json" },
+			headers,
 			credentials: "include",
 		});
 		if (!response.ok) throw new Error("Failed to complete onboarding");
@@ -221,11 +231,13 @@ const onboardingApi = {
 	},
 
 	createCheckoutSession: async (input: CheckoutSessionInput): Promise<CheckoutSessionResponse> => {
-		const response = await fetch(`${API_GATEWAY_URL}/api/v1/billing/checkout/session`, {
+		const headers = await createAuthHeaders();
+		const { onboardingId, ...body } = input;
+		const response = await fetch(`${API_GATEWAY_URL}/api/v1/auth/onboarding/${onboardingId}/create-checkout`, {
 			method: "POST",
-			headers: { "Content-Type": "application/json" },
+			headers,
 			credentials: "include",
-			body: JSON.stringify(input),
+			body: JSON.stringify(body),
 		});
 		if (!response.ok) throw new Error("Failed to create checkout session");
 		return response.json();
@@ -400,7 +412,7 @@ const userApi = {
 		const response = await fetch(`${API_GATEWAY_URL}/api/v1/users/by-auth-id/${betterAuthUserId}`, {
 			credentials: "include",
 		});
-		if (response.status === 404) return null;
+		if (response.status === 404 || response.status === 401) return null;
 		if (!response.ok) throw new Error("Failed to get user");
 		return response.json();
 	},
@@ -414,24 +426,15 @@ export const useUserByAuthId = (betterAuthUserId: string | undefined) => {
 	});
 };
 
-const findFirstIncompleteStep = (completedSteps: string[]): typeof ONBOARDING_STEPS[number] => {
-	for (const step of ONBOARDING_STEPS) {
-		if (!completedSteps.includes(step.name)) {
-			return step;
-		}
-	}
-	return ONBOARDING_STEPS[ONBOARDING_STEPS.length - 1];
+const findFirstIncompleteOnboardingStep = (completedSteps: string[]): typeof ONBOARDING_STEPS[number] => {
+	return ONBOARDING_STEPS.find((step) => !completedSteps.includes(step.name)) ?? ONBOARDING_STEPS[ONBOARDING_STEPS.length - 1];
 };
 
-const getTargetRouteForOnboarding = (onboarding: OnboardingRecord): string => {
+const determineTargetRouteForOnboarding = (onboarding: OnboardingRecord): string => {
 	const completedSteps = onboarding.completedSteps || [];
+	if (completedSteps.length === 0) return "/organization";
 
-	if (completedSteps.length === 0) {
-		return "/organization";
-	}
-
-	const firstIncompleteStep = findFirstIncompleteStep(completedSteps);
-	return firstIncompleteStep.route;
+	return findFirstIncompleteOnboardingStep(completedSteps).route;
 };
 
 export const determineAuthFlowDestination = async (betterAuthUserId: string): Promise<AuthFlowResult> => {
@@ -451,7 +454,7 @@ export const determineAuthFlowDestination = async (betterAuthUserId: string): Pr
 		return { destination: "onboarding", targetRoute: "/organization" };
 	}
 
-	const targetRoute = getTargetRouteForOnboarding(onboardingResult.onboarding);
+	const targetRoute = determineTargetRouteForOnboarding(onboardingResult.onboarding);
 
 	return {
 		destination: "onboarding",
@@ -476,14 +479,6 @@ export const useDetermineAuthFlow = () => {
 	});
 };
 
-/**
- * Route guard for onboarding pages.
- * Provides loading states for UX enhancement only.
- * Middleware handles actual route protection and redirects.
- *
- * @param requiredStep - The step name this page requires (e.g., "team" for /invite-team)
- * @returns Object with loading state for UI purposes
- */
 export const useOnboardingGuard = (requiredStep: typeof ONBOARDING_STEPS[number]['name']) => {
 	const { onboardingId } = useOnboardingStore();
 

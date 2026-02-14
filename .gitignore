@@ -39,4 +39,12 @@ next-env.d.ts
 .wrangler
 .dev.vars*
 !.dev.vars.example
+
+# environment files
+.env
+.env.local
+.env*.local
+.env.development.local
+.env.test.local
+.env.production.local
 !.env.example
