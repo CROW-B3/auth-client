@@ -17,7 +17,6 @@ function AcceptInviteContent() {
 	const organizationName = searchParams.get("orgName") || "this organization";
 
 	useEffect(() => {
-		// Validate that we have the required params
 		if (!organizationId || !email) {
 			toast.error("Invalid invitation link");
 			router.push("/");
@@ -26,13 +25,11 @@ function AcceptInviteContent() {
 
 	const handleAccept = () => {
 		setIsLoading(true);
-		// Store invitation data in sessionStorage for sign-up page
 		sessionStorage.setItem("pendingInvitation", JSON.stringify({
 			organizationId,
 			organizationName,
 			email,
 		}));
-		// Redirect to signup page
 		router.push(`/signup?email=${encodeURIComponent(email || "")}`);
 	};
 
@@ -143,7 +140,7 @@ function AcceptInviteContent() {
 						animate={{ opacity: 1 }}
 						transition={{ delay: 0.4 }}
 					>
-						<p>By accepting, you'll be added to the organization workspace.</p>
+						<p>By accepting, you&apos;ll be added to the organization workspace.</p>
 					</motion.div>
 
 					<motion.div

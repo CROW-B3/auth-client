@@ -7,17 +7,12 @@ import { motion } from "framer-motion";
 import toast from "react-hot-toast";
 import { WEB_SDK_INSTALL_COMMANDS, getWebSDKInitCode } from "@/lib/constants/web-sdk";
 import { apiKey as apiKeyClient } from "@/lib/auth-client";
-import { useOnboardingStore } from "@/stores/onboarding-store";
-import { useSubmitSource } from "@/hooks/use-onboarding";
 
 export default function ConnectWebPage() {
 	const router = useRouter();
 	const [packageManager, setPackageManager] = useState<PackageManager>("bun");
 	const [generatedApiKey, setGeneratedApiKey] = useState<string | null>(null);
 	const [isGenerating, setIsGenerating] = useState(false);
-
-	const { onboardingId, setConnectionStatus } = useOnboardingStore();
-	const submitSource = useSubmitSource();
 
 	useEffect(() => {
 		const generateKey = async () => {
@@ -46,7 +41,7 @@ export default function ConnectWebPage() {
 
 	const handleContinue = () => {
 		toast.success("Setup instructions saved!");
-		router.push("/connect-sources");
+		router.push("/setup-components");
 	};
 
 	return (

@@ -3,10 +3,9 @@
 import { useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { AnimatedBackground, Navbar, PageHeader, Button, ConnectionOption } from "@b3-crow/ui-kit";
-import { LuGlobe, LuVideo, LuArrowRight, LuSkipForward } from "react-icons/lu";
+import { LuGlobe, LuVideo, LuSkipForward } from "react-icons/lu";
 import { TbSocial } from "react-icons/tb";
 import { motion } from "framer-motion";
-import { useOnboardingGuard, useOnboardingById } from "@/hooks/use-onboarding";
 import { useOnboardingStore } from "@/stores/onboarding-store";
 
 type ModuleType = "web" | "cctv" | "social";
@@ -45,43 +44,31 @@ function getSelectedSources(modules: Record<ModuleType, boolean> | null): Connec
 	return ALL_SOURCES.filter((source) => modules[source.id] === true);
 }
 
-function getNextSourceRoute(currentSourceId: ModuleType, selectedSources: ConnectionSource[]): string {
-	const currentIndex = selectedSources.findIndex((s) => s.id === currentSourceId);
-	const hasNextSource = currentIndex >= 0 && currentIndex < selectedSources.length - 1;
-
-	if (hasNextSource) {
-		const nextSource = selectedSources[currentIndex + 1];
-		return `/connect-sources/${nextSource.id}`;
-	}
-
-	return "/invite-team";
-}
-
 export default function ConnectSourcesPage() {
 	const router = useRouter();
-	const { onboardingId } = useOnboardingStore();
-	const { data: onboarding } = useOnboardingById(onboardingId);
-	const guard = useOnboardingGuard("sources");
+	const { selectedPlans } = useOnboardingStore();
 
-	useEffect(() => {
-		if (guard.data?.shouldRedirect && guard.data.redirectTo) {
-			router.push(guard.data.redirectTo);
-		}
-	}, [guard.data, router]);
-
-	const selectedModules = onboarding?.modules ? JSON.parse(onboarding.modules) : null;
+	const selectedModules: Record<ModuleType, boolean> | null = selectedPlans.length > 0
+		? { web: selectedPlans.includes("web"), cctv: selectedPlans.includes("cctv"), social: selectedPlans.includes("social") }
+		: null;
 	const selectedSources = getSelectedSources(selectedModules);
+	const dataLoaded = selectedModules != null;
 
 	const handleSourceClick = (sourceId: ModuleType) => {
-		router.push(`/connect-sources/${sourceId}`);
+		router.push(`/setup-components/${sourceId}`);
 	};
 
 	const handleSkip = () => {
 		router.push("/invite-team");
 	};
 
-	if (selectedSources.length === 0) {
-		router.push("/invite-team");
+	useEffect(() => {
+		if (dataLoaded && selectedSources.length === 0) {
+			router.push("/invite-team");
+		}
+	}, [dataLoaded, selectedSources, router]);
+
+	if (!dataLoaded || selectedSources.length === 0) {
 		return null;
 	}
 
@@ -112,6 +99,7 @@ export default function ConnectSourcesPage() {
 							icon={source.icon}
 							title={source.title}
 							description={source.description}
+							status="not_started"
 							onClick={() => handleSourceClick(source.id)}
 							animationDelay={0.5 + index * 0.1}
 						/>

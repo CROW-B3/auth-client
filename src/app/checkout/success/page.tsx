@@ -16,14 +16,7 @@ function CheckoutSuccessContent() {
 	const submitCheckout = useSubmitCheckout();
 	const hasSubmitted = useRef(false);
 
-	// Route guard
-	const guard = useOnboardingGuard("checkout");
-
-	useEffect(() => {
-		if (guard.data?.shouldRedirect && guard.data.redirectTo) {
-			router.push(guard.data.redirectTo);
-		}
-	}, [guard.data, router]);
+	useOnboardingGuard("checkout");
 
 	useEffect(() => {
 		if (!sessionId) {
