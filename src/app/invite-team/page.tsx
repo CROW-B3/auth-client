@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { AnimatedBackground, Button, Navbar, PageHeader, Select, EmailTagInput, PermissionToggle, PendingInviteCard } from "@b3-crow/ui-kit";
 import { LuArrowRight, LuLoader, LuMessageCircle, LuNetwork, LuTrendingUp, LuUsers, LuKey } from "react-icons/lu";
@@ -8,7 +8,7 @@ import { motion } from "framer-motion";
 import toast from "react-hot-toast";
 import { z } from "zod";
 import { inviteTeamSchema, type PendingInvite } from "@/lib/validations";
-import { useOnboardingStore, useOnboardingStoreHydrated } from "@/stores/onboarding-store";
+import { useOnboardingStoreHydrated } from "@/stores/onboarding-store";
 import { useSubmitTeam, useCompleteOnboarding, useSendTeamInvites, useOnboardingGuard } from "@/hooks/use-onboarding";
 import { useCheckEmails } from "@/hooks/use-users";
 import { buildPermissions, buildPermissionSummary } from "@/utils/permissions";
@@ -27,7 +27,6 @@ export default function InviteTeamPage() {
 	const [teamManagementEnabled, setTeamManagementEnabled] = useState(false);
 	const [apiKeyManagementEnabled, setApiKeyManagementEnabled] = useState(false);
 	const [pendingInvites, setPendingInvites] = useState<PendingInvite[]>([]);
-	const [isLoadingInvites, setIsLoadingInvites] = useState(true);
 
 	const { onboardingId, betterAuthOrgId, organizationName, hydrated } = useOnboardingStoreHydrated();
 	const submitTeam = useSubmitTeam();
@@ -35,25 +34,7 @@ export default function InviteTeamPage() {
 	const checkEmails = useCheckEmails();
 	const sendInvites = useSendTeamInvites();
 
-	// Route guard - ensure user has completed previous steps
-	const guard = useOnboardingGuard("team");
-
-	useEffect(() => {
-		if (guard.data?.shouldRedirect && guard.data.redirectTo) {
-			router.push(guard.data.redirectTo);
-		}
-	}, [guard.data, router]);
-
-	// Wait for hydration to complete
-	useEffect(() => {
-		if (hydrated) {
-			console.log("[INVITE-TEAM] Store hydrated with:", {
-				onboardingId,
-				betterAuthOrgId,
-				organizationName,
-			});
-		}
-	}, [hydrated, onboardingId, betterAuthOrgId, organizationName]);
+	useOnboardingGuard("team");
 
 	const handleEmailsChange = async (newEmails: string[]) => {
 		const addedEmails = findAddedEmails(newEmails, emails);
@@ -83,10 +64,6 @@ export default function InviteTeamPage() {
 		setEmails(newEmails);
 	};
 
-	useEffect(() => {
-		setIsLoadingInvites(false);
-	}, []);
-
 	const handleComponentToggle = (component: string) => {
 		setChatComponents(toggleComponent(chatComponents, component));
 	};
@@ -96,21 +73,14 @@ export default function InviteTeamPage() {
 		setIsSubmitting(true);
 
 		try {
-			// Ensure store has hydrated before proceeding
 			if (!hydrated) {
 				toast.error("Please wait, loading your organization data...");
 				setIsSubmitting(false);
 				return;
 			}
 
-			// Validate organization data is available
 			if (!betterAuthOrgId || !organizationName) {
 				toast.error("Organization information is missing. Please restart the onboarding process.");
-				console.error("[INVITE-TEAM] Missing organization data:", {
-					betterAuthOrgId,
-					organizationName,
-					onboardingId,
-				});
 				setIsSubmitting(false);
 				return;
 			}
@@ -166,8 +136,6 @@ export default function InviteTeamPage() {
 
 			setEmails([]);
 		} catch (error) {
-			console.error("Error sending invitations:", error);
-
 			if (error instanceof z.ZodError) {
 				const firstError = error.issues[0];
 				toast.error(firstError?.message || "Please fix validation errors");
@@ -197,10 +165,8 @@ export default function InviteTeamPage() {
 		try {
 			const API_GATEWAY_URL = process.env.NEXT_PUBLIC_API_GATEWAY_URL || "http://localhost:8000";
 
-			// Step 1: Mark team step as complete
 			await submitTeam.mutateAsync(onboardingId);
 
-			// Step 2: Get onboarding data to retrieve builder IDs
 			const onboardingResponse = await fetch(
 				`${API_GATEWAY_URL}/api/v1/auth/onboarding/${onboardingId}`,
 				{ credentials: "include" }
@@ -211,10 +177,9 @@ export default function InviteTeamPage() {
 				return;
 			}
 
-			const { onboarding } = await onboardingResponse.json();
+			const { onboarding } = await onboardingResponse.json() as { onboarding: { orgBuilderId?: string; userBuilderId?: string } };
 
-			// Step 3: Finalize org-builder to create organization
-			if (onboarding.orgBuilderId) {
+			if (onboarding.orgBuilderId && onboarding.orgBuilderId !== "null") {
 				const finalizeOrgResponse = await fetch(
 					`${API_GATEWAY_URL}/api/v1/organizations/org-builders/${onboarding.orgBuilderId}/finalize`,
 					{
@@ -231,8 +196,7 @@ export default function InviteTeamPage() {
 				}
 			}
 
-			// Step 4: Finalize user-builder to create user with onboardingId
-			if (onboarding.userBuilderId) {
+			if (onboarding.userBuilderId && onboarding.userBuilderId !== "null") {
 				const session = await import("@/lib/auth-client").then((m) => m.getSession());
 				const userData = session?.data?.user;
 
@@ -261,14 +225,10 @@ export default function InviteTeamPage() {
 				}
 			}
 
-			// Step 5: Mark onboarding as completed
 			await completeOnboarding.mutateAsync(onboardingId);
 
-			// Step 6: Redirect to dashboard
-			const dashboardUrl = process.env.NEXT_PUBLIC_DASHBOARD_URL || "http://localhost:3002";
-			window.location.href = dashboardUrl;
-		} catch (error) {
-			console.error("Error completing onboarding:", error);
+			router.push("/onboarding-complete");
+		} catch {
 			toast.error("Failed to complete onboarding. Please try again.");
 		}
 	};
@@ -281,11 +241,20 @@ export default function InviteTeamPage() {
 		}
 
 		try {
+			const session = await import("@/lib/auth-client").then((m) => m.getSession());
+			const userData = session?.data?.user;
+
+			if (!userData?.id) {
+				toast.error("Session expired. Please sign in again.");
+				return;
+			}
+
 			const result = await sendInvites.mutateAsync({
 				emails: [invite.email],
 				organizationId: betterAuthOrgId,
 				organizationName: organizationName,
-				inviterName: "Team Admin",
+				inviterName: userData.name || "Team Admin",
+				inviterId: userData.id,
 				permissions: invite.permissions || {},
 			});
 
@@ -295,8 +264,7 @@ export default function InviteTeamPage() {
 			} else {
 				toast.error("Failed to resend invitation");
 			}
-		} catch (error) {
-			console.error("Error resending invitation:", error);
+		} catch {
 			toast.error("Failed to resend invitation");
 		}
 	};
