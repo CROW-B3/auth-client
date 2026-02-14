@@ -1,7 +1,5 @@
 "use client";
 
-import { useRouter } from "next/navigation";
-import { useEffect } from "react";
 import { motion } from "framer-motion";
 import {
 	AnimatedBackground,
@@ -19,23 +17,14 @@ import { LuArrowRight, LuLoader } from "react-icons/lu";
 import { PLANS, type PlanType, type BillingPeriod } from "@/config/plans";
 import { getPricePerModule } from "@/lib/pricing";
 import { useOnboardingStore } from "@/stores/onboarding-store";
-import { useSubmitPlan, useCreateCheckoutSession, useOnboardingById, useOnboardingGuard } from "@/hooks/use-onboarding";
+import { useSubmitPlan, useCreateCheckoutSession, useOnboardingGuard } from "@/hooks/use-onboarding";
 
 export default function ChoosePlanPage() {
-	const router = useRouter();
 	const { selectedPlans, billingPeriod, autoScale, onboardingId, togglePlan, setBillingPeriod, setAutoScale } = useOnboardingStore();
 	const submitPlan = useSubmitPlan();
 	const createCheckoutSession = useCreateCheckoutSession();
-	const { data: onboarding } = useOnboardingById(onboardingId);
 
-	// Route guard
-	const guard = useOnboardingGuard("plan");
-
-	useEffect(() => {
-		if (guard.data?.shouldRedirect && guard.data.redirectTo) {
-			router.push(guard.data.redirectTo);
-		}
-	}, [guard.data, router]);
+	useOnboardingGuard("modules");
 
 	const handlePlanToggle = (plan: PlanType, checked: boolean) => {
 		if (checked && selectedPlans.length >= 3) {
@@ -77,9 +66,10 @@ export default function ChoosePlanPage() {
 
 			const baseUrl = process.env.NEXT_PUBLIC_SITE_URL || "http://localhost:3001";
 			const checkoutResult = await createCheckoutSession.mutateAsync({
+				onboardingId,
 				billingBuilderId: updatedOnboarding.billingBuilderId,
 				successUrl: `${baseUrl}/checkout/success?session_id={CHECKOUT_SESSION_ID}`,
-				cancelUrl: `${baseUrl}/choose-plan`,
+				cancelUrl: `${baseUrl}/choose-modules`,
 			});
 
 			if (checkoutResult.url) {

@@ -5,10 +5,15 @@ import type { PlanType, BillingPeriod } from "@/config/plans";
 
 type ConnectionStatus = "not_started" | "in_progress" | "connected";
 
+let pendingProfilePicture: File | null = null;
+export const setPendingProfilePicture = (file: File | null) => { pendingProfilePicture = file; };
+export const getPendingProfilePicture = () => pendingProfilePicture;
+
 interface OnboardingState {
 	onboardingId: string | null;
 	betterAuthOrgId: string | null;
 	organizationName: string;
+	pendingProfileName: string | null;
 	selectedPlans: PlanType[];
 	billingPeriod: BillingPeriod;
 	autoScale: boolean;
@@ -21,6 +26,7 @@ interface OnboardingActions {
 	setOnboardingId: (id: string | null) => void;
 	setBetterAuthOrgId: (id: string | null) => void;
 	setOrganizationName: (name: string) => void;
+	setPendingProfileName: (name: string | null) => void;
 	setSelectedPlans: (plans: PlanType[]) => void;
 	togglePlan: (plan: PlanType) => void;
 	setBillingPeriod: (period: BillingPeriod) => void;
@@ -38,6 +44,7 @@ const initialState: OnboardingState = {
 	onboardingId: null,
 	betterAuthOrgId: null,
 	organizationName: "",
+	pendingProfileName: null,
 	selectedPlans: [],
 	billingPeriod: "annual",
 	autoScale: false,
@@ -58,6 +65,7 @@ export const useOnboardingStore = create<OnboardingStore>()(
 			setOnboardingId: (onboardingId) => set({ onboardingId }),
 			setBetterAuthOrgId: (betterAuthOrgId) => set({ betterAuthOrgId }),
 			setOrganizationName: (organizationName) => set({ organizationName }),
+			setPendingProfileName: (pendingProfileName) => set({ pendingProfileName }),
 			setSelectedPlans: (selectedPlans) => set({ selectedPlans }),
 
 			togglePlan: (plan) => {
@@ -95,13 +103,11 @@ export const useOnboardingStore = create<OnboardingStore>()(
 	)
 );
 
-// Custom hook to ensure hydration has completed before accessing store
 export const useOnboardingStoreHydrated = () => {
 	const [hydrated, setHydrated] = useState(false);
 	const store = useOnboardingStore();
 
 	useEffect(() => {
-		// Wait for next tick to ensure hydration is complete
 		const unsubHydrate = useOnboardingStore.persist.onHydrate(() => {
 			setHydrated(false);
 		});

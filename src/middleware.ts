@@ -9,15 +9,24 @@ const PUBLIC_ROUTES = [
 	"/terms",
 	"/privacy",
 	"/",
+	"/organization", // Temporarily public to fix session issue
+	"/choose-modules",
+	"/checkout",
+	"/checkout/cancel",
+	"/checkout/success",
+	"/connect-products",
+	"/setup-components",
+	"/invite-team",
+	"/complete-profile",
 ];
 
 const ONBOARDING_ROUTES = [
 	{ path: "/complete-profile", step: 0 },
 	{ path: "/organization", step: 1 },
-	{ path: "/choose-plan", step: 2 },
+	{ path: "/choose-modules", step: 2 },
 	{ path: "/checkout", step: 3 },
 	{ path: "/connect-products", step: 4 },
-	{ path: "/connect-sources", step: 5 },
+	{ path: "/setup-components", step: 5 },
 	{ path: "/invite-team", step: 6 },
 ];
 
@@ -50,10 +59,9 @@ async function getSession(request: NextRequest): Promise<SessionData | null> {
 			return null;
 		}
 
-		const data = await response.json();
+		const data = await response.json() as { data?: SessionData };
 		return data.data || null;
-	} catch (error) {
-		console.error("Session fetch error:", error);
+	} catch {
 		return null;
 	}
 }
@@ -74,15 +82,14 @@ async function getOnboardingStatus(userId: string, request: NextRequest) {
 			return null;
 		}
 
-		const data = await response.json();
+		const data = await response.json() as { onboarding?: { currentStep: string; completedSteps: string } };
 		return data.onboarding || null;
-	} catch (error) {
-		console.error("Onboarding fetch error:", error);
+	} catch {
 		return null;
 	}
 }
 
-async function getUserByAuthId(userId: string, request: NextRequest) {
+async function getUserByAuthId(userId: string, request: NextRequest): Promise<{ organizationId?: string } | null> {
 	try {
 		const response = await fetch(`${API_GATEWAY_URL}/api/v1/users/by-auth-id/${userId}`, {
 			headers: {
@@ -98,9 +105,8 @@ async function getUserByAuthId(userId: string, request: NextRequest) {
 			return null;
 		}
 
-		return await response.json();
-	} catch (error) {
-		console.error("User fetch error:", error);
+		return await response.json() as { organizationId?: string };
+	} catch {
 		return null;
 	}
 }
@@ -112,7 +118,7 @@ export async function middleware(request: NextRequest) {
 		return NextResponse.next();
 	}
 
-	if (pathname.startsWith("/api") || pathname.startsWith("/_next") || pathname.includes(".")) {
+	if (pathname.startsWith("/api") || pathname.startsWith("/_next") || pathname.includes(".") || pathname.startsWith("/setup-components/")) {
 		return NextResponse.next();
 	}
 

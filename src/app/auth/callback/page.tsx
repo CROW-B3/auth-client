@@ -37,7 +37,6 @@ const processPendingInvitation = async (
 	);
 
 	if (!response.ok) {
-		console.error("Failed to accept invitation:", await response.text());
 		throw new Error("Failed to accept invitation");
 	}
 
@@ -79,8 +78,7 @@ export default function AuthCallbackPage() {
 							setStatus
 						);
 						if (hasPendingInvitation) return;
-					} catch (inviteError) {
-						console.error("Error processing pending invitation:", inviteError);
+					} catch {
 						sessionStorage.removeItem("pendingInvitation");
 						toast.error("Failed to accept invitation. Continuing with onboarding...");
 					}
@@ -102,28 +100,11 @@ export default function AuthCallbackPage() {
 						setStatus("Setting up your profile...");
 
 						try {
-							const imageResponse = await fetch(session.data.user.image);
-							const imageBlob = await imageResponse.blob();
-							const imageFile = new File([imageBlob], "profile.jpg", { type: "image/jpeg" });
-
-							const uploadFormData = new FormData();
-							uploadFormData.append("file", imageFile);
-
-							const uploadResponse = await fetch(
-								`${API_GATEWAY_URL}/api/v1/users/${session.data.user.id}/profile-picture`,
-								{
-									method: "POST",
-									body: uploadFormData,
-									credentials: "include",
-								}
-							);
-
-							if (uploadResponse.ok) {
-								const uploadResult = await uploadResponse.json();
-								console.log("OAuth profile picture uploaded:", uploadResult.url);
-							}
-						} catch (error) {
-							console.error("Failed to download/upload OAuth profile picture:", error);
+							await fetch(session.data.user.image, {
+								mode: 'no-cors',
+								cache: 'no-cache'
+							});
+						} catch {
 						}
 
 						setStatus("Continuing your setup...");
@@ -147,8 +128,7 @@ export default function AuthCallbackPage() {
 
 				setStatus("Continuing your setup...");
 				router.push(result.targetRoute || "/organization");
-			} catch (error) {
-				console.error("Auth callback error:", error);
+			} catch {
 				toast.error("Something went wrong. Please try again.");
 				router.push("/login");
 			}

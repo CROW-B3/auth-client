@@ -10,8 +10,8 @@ import toast from "react-hot-toast";
 import { createOrganizationSchema, type CreateOrganizationFormData } from "@/lib/validations";
 import { type FormErrors } from "@/types";
 import { organization, getSession } from "@/lib/auth-client";
-import { useOnboardingStore } from "@/stores/onboarding-store";
-import { useSubmitOrganization, useStartOnboarding } from "@/hooks/use-onboarding";
+import { useOnboardingStore, getPendingProfilePicture, setPendingProfilePicture } from "@/stores/onboarding-store";
+import { useStartOnboarding } from "@/hooks/use-onboarding";
 
 export default function CreateOrganizationPage() {
 	const router = useRouter();
@@ -20,7 +20,6 @@ export default function CreateOrganizationPage() {
 	const [isInitializing, setIsInitializing] = useState(true);
 
 	const { onboardingId, setOrganizationName, setBetterAuthOrgId } = useOnboardingStore();
-	const submitOrganization = useSubmitOrganization();
 	const startOnboarding = useStartOnboarding();
 
 	useEffect(() => {
@@ -50,7 +49,7 @@ export default function CreateOrganizationPage() {
 		};
 
 		initializeOnboarding();
-	}, []);
+	}, [onboardingId, router, startOnboarding]);
 
 	const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
 		e.preventDefault();
@@ -72,8 +71,6 @@ export default function CreateOrganizationPage() {
 
 			const API_GATEWAY_URL = process.env.NEXT_PUBLIC_API_GATEWAY_URL || "http://localhost:8000";
 
-			// Step 1: Create Better Auth organization
-			// Generate unique slug from organization name with timestamp
 			const baseSlug = validatedData.organizationName
 				.toLowerCase()
 				.replace(/[^a-z0-9]+/g, '-')
@@ -98,82 +95,50 @@ export default function CreateOrganizationPage() {
 				return;
 			}
 
-			// Step 2: Create org-builder
-			const orgBuilderResponse = await fetch(`${API_GATEWAY_URL}/api/v1/organizations/org-builders`, {
-				method: "POST",
+			const orgResponse = await fetch(`${API_GATEWAY_URL}/api/v1/auth/onboarding/${onboardingId}/step/organization`, {
+				method: "PATCH",
 				headers: { "Content-Type": "application/json" },
 				credentials: "include",
 				body: JSON.stringify({
 					betterAuthOrgId: org.id,
-					name: validatedData.organizationName,
-				}),
-			});
-
-			if (!orgBuilderResponse.ok) {
-				toast.error("Failed to create organization builder");
-				return;
-			}
-
-			const orgBuilder = await orgBuilderResponse.json();
-
-			// Step 3: Create user-builder
-			const userBuilderResponse = await fetch(`${API_GATEWAY_URL}/api/v1/users/user-builders`, {
-				method: "POST",
-				headers: { "Content-Type": "application/json" },
-				credentials: "include",
-				body: JSON.stringify({
+					organizationName: validatedData.organizationName,
 					betterAuthUserId: session.data.user.id,
-					organizationId: orgBuilder.id,
-					permissions: {
-						chat: {
-							enabled: true,
-							components: ["web", "cctv", "social"],
-							lookbackWindow: "all",
-						},
-						interactions: true,
-						patterns: true,
-						teamManagement: true,
-						apiKeyManagement: true,
-					},
 				}),
 			});
 
-			if (!userBuilderResponse.ok) {
-				toast.error("Failed to create user builder");
+			if (!orgResponse.ok) {
+				const error = await orgResponse.json().catch(() => ({ error: "Unknown error" })) as { error: string | { message?: string } };
+				const errorMessage = typeof error.error === "string"
+					? error.error
+					: error.error?.message || "Failed to create organization";
+				toast.error(errorMessage);
 				return;
 			}
 
-			const userBuilder = await userBuilderResponse.json();
-
-			// Step 4: Create billing-builder
-			const billingBuilderResponse = await fetch(`${API_GATEWAY_URL}/api/v1/billing/billing-builders`, {
-				method: "POST",
-				headers: { "Content-Type": "application/json" },
-				credentials: "include",
-				body: JSON.stringify({
-					organizationId: orgBuilder.id,
-				}),
-			});
-
-			if (!billingBuilderResponse.ok) {
-				toast.error("Failed to create billing builder");
-				return;
+			const pendingPicture = getPendingProfilePicture();
+			if (pendingPicture) {
+				try {
+					const userLookup = await fetch(
+						`${API_GATEWAY_URL}/api/v1/users/by-auth-id/${session.data.user.id}`,
+						{ credentials: "include" }
+					);
+					if (userLookup.ok) {
+						const userData = await userLookup.json() as { id: string };
+						const uploadFormData = new FormData();
+						uploadFormData.append("file", pendingPicture);
+						await fetch(`${API_GATEWAY_URL}/api/v1/users/${userData.id}/profile-picture`, {
+							method: "POST",
+							body: uploadFormData,
+							credentials: "include",
+						});
+					}
+					setPendingProfilePicture(null);
+				} catch {
+				}
 			}
 
-			const billingBuilder = await billingBuilderResponse.json();
-
-			// Step 5: Update onboarding with all IDs
-			await submitOrganization.mutateAsync({
-				onboardingId,
-				input: {
-					betterAuthOrgId: org.id,
-					orgBuilderId: orgBuilder.id,
-					userBuilderId: userBuilder.id,
-					billingBuilderId: billingBuilder.id,
-				},
-			});
-
-			router.push("/choose-plan");
+			toast.success("Organization created successfully!");
+			router.push("/choose-modules");
 
 		} catch (error) {
 			if (error instanceof z.ZodError) {
@@ -190,7 +155,6 @@ export default function CreateOrganizationPage() {
 				setErrors(newErrors);
 				toast.error("Please fix the errors in the form");
 			} else {
-				console.error("An unexpected error occurred:", error);
 				toast.error("An unexpected error occurred. Please try again.");
 			}
 		} finally {

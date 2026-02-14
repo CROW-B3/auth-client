@@ -1,38 +1,30 @@
 @import "tailwindcss";
 
 :root {
-	/* CROW Design System - Light Mode */
 	--background: #ffffff;
 	--foreground: #171717;
 
-	/* Primary Colors */
-	--primary: 124 58 237; /* #7c3aed - Violet 600 */
-	--primary-hover: 139 92 246; /* #8b5cf6 - Violet 500 */
+	--primary: 124 58 237;
+	--primary-hover: 139 92 246;
 
-	/* Background Colors */
-	--background-dark: 3 0 5; /* #030005 */
-	--surface-dark: 10 10 15; /* #0a0a0f */
+	--background-dark: 3 0 5;
+	--surface-dark: 10 10 15;
 
-	/* Glow Effects */
-	--glow-color: 124 58 237; /* Violet for glow effects */
+	--glow-color: 124 58 237;
 }
 
 @theme inline {
-	/* Tailwind Theme Extensions */
 	--color-background: var(--background);
 	--color-foreground: var(--foreground);
 
-	/* Custom Colors */
 	--color-primary: rgb(var(--primary));
 	--color-primary-hover: rgb(var(--primary-hover));
 	--color-background-dark: rgb(var(--background-dark));
 	--color-surface-dark: rgb(var(--surface-dark));
 
-	/* Border Radius */
 	--radius: 0.5rem;
 	--radius-pill: 9999px;
 
-	/* Box Shadows - Glow Effects */
 	--shadow-glow: 0 0 25px -5px rgba(var(--glow-color), 0.4);
 	--shadow-glow-hover: 0 0 35px -5px rgba(var(--glow-color), 0.6);
 }
@@ -44,14 +36,12 @@
 	}
 }
 
-/* Global Styles */
 body {
 	background: var(--background);
 	color: var(--foreground);
 	font-family: var(--font-sora), "Sora", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
 }
 
-/* Custom Scrollbar */
 ::-webkit-scrollbar {
 	width: 6px;
 }
@@ -69,18 +59,15 @@ body {
 	background: #444;
 }
 
-/* Text Glow Effect */
 .text-glow {
 	text-shadow: 0 0 10px rgba(255, 255, 255, 0.1);
 }
 
-/* Selection Styling */
 ::selection {
 	background: rgba(var(--primary-hover), 0.3);
-	color: rgb(203, 191, 255); /* Violet-200 */
+	color: rgb(203, 191, 255);
 }
 
-/* Autofill Styling - Override browser defaults */
 input:-webkit-autofill,
 input:-webkit-autofill:hover,
 input:-webkit-autofill:focus,
