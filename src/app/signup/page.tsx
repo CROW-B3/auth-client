@@ -145,7 +145,7 @@ function SignUpContent() {
 
 			await new Promise(resolve => setTimeout(resolve, 500));
 
-			window.location.href = "/organization";
+			window.location.href = "/complete-profile";
 
 		} catch (error) {
 			if (error instanceof z.ZodError) {
