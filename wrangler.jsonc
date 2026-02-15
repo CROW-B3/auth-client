@@ -17,7 +17,7 @@
     "ENVIRONMENT": "prod",
     "NEXT_PUBLIC_SITE_URL": "https://auth.crowai.dev",
     "NEXT_PUBLIC_API_GATEWAY_URL": "https://api.crowai.dev",
-    "NEXT_PUBLIC_DASHBOARD_URL": "https://dashboard.crowai.dev",
+    "NEXT_PUBLIC_DASHBOARD_URL": "https://app.crowai.dev",
     "NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY": "pk_test_51SpAH5FhHtHJYxSlKyZHAAJ3tsGNywysGeJphbGGax6vDHkF3EX1DwLRsK8HLYTYJfY62dm3WEeSkZTDyhsDr8LJ00LD4Vi7GP",
   },
   "routes": [
@@ -29,7 +29,7 @@
         "ENVIRONMENT": "dev",
         "NEXT_PUBLIC_SITE_URL": "https://dev.auth.crowai.dev",
         "NEXT_PUBLIC_API_GATEWAY_URL": "https://dev.api.crowai.dev",
-        "NEXT_PUBLIC_DASHBOARD_URL": "https://dev.dashboard.crowai.dev",
+        "NEXT_PUBLIC_DASHBOARD_URL": "https://dev.app.crowai.dev",
         "NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY": "pk_test_51SpAH5FhHtHJYxSlKyZHAAJ3tsGNywysGeJphbGGax6vDHkF3EX1DwLRsK8HLYTYJfY62dm3WEeSkZTDyhsDr8LJ00LD4Vi7GP",
       },
       "routes": [
