@@ -2,14 +2,14 @@ import type { NextConfig } from "next";
 
 const ContentSecurityPolicy = `
   default-src 'self';
-  script-src 'self' https://js.stripe.com https://static.cloudflareinsights.com 'unsafe-inline' 'unsafe-eval';
-  style-src 'self' https://js.stripe.com 'unsafe-inline';
+  script-src 'self' https://js.stripe.com https://*.stripe.com https://*.stripecdn.com https://b.stripecdn.com https://static.cloudflareinsights.com 'unsafe-inline' 'unsafe-eval';
+  style-src 'self' https://js.stripe.com https://*.stripe.com https://*.stripecdn.com 'unsafe-inline';
   img-src 'self' https://*.stripe.com https://*.stripecdn.com https://*.crowai.dev https://lh3.googleusercontent.com data: blob:;
   font-src 'self' data:;
-  connect-src 'self' http://localhost:* https://*.crowai.dev https://api.stripe.com https://r.stripe.com https://q.stripe.com https://m.stripe.com https://m.stripe.network https://lh3.googleusercontent.com;
-  frame-src 'self' https://js.stripe.com https://hooks.stripe.com https://checkout.stripe.com https://*.stripe.com https://*.stripecdn.com https://newassets.hcaptcha.com https://*.hcaptcha.com;
+  connect-src 'self' http://localhost:* https://*.crowai.dev https://api.stripe.com https://r.stripe.com https://q.stripe.com https://m.stripe.com https://m.stripe.network https://*.stripecdn.com https://lh3.googleusercontent.com;
+  frame-src 'self' https://js.stripe.com https://hooks.stripe.com https://checkout.stripe.com https://*.stripe.com https://*.stripecdn.com https://b.stripecdn.com https://newassets.hcaptcha.com https://*.hcaptcha.com;
   worker-src 'self' blob:;
-  child-src 'self' blob: https://js.stripe.com;
+  child-src 'self' blob: https://js.stripe.com https://*.stripe.com https://*.stripecdn.com;
   form-action 'self' https://checkout.stripe.com;
 `;
 
@@ -33,6 +33,13 @@ const securityHeaders = [
 ];
 
 const nextConfig: NextConfig = {
+	async redirects() {
+		return [
+			{ source: '/', destination: '/login', permanent: false },
+			{ source: '/sign-in', destination: '/login', permanent: false },
+			{ source: '/sign-up', destination: '/signup', permanent: false },
+		];
+	},
 	async rewrites() {
 		return [
 			{
@@ -54,6 +61,6 @@ const nextConfig: NextConfig = {
 export default nextConfig;
 
 // Enable calling `getCloudflareContext()` in `next dev`.
-// See https://opennext.js.org/cloudflare/bindings#local-access-to-bindings.
+// See https://opennextjs.org/cloudflare/bindings#local-access-to-bindings.
 import { initOpenNextCloudflareForDev } from "@opennextjs/cloudflare";
 initOpenNextCloudflareForDev();

@@ -2,7 +2,7 @@ import { createAuthClient } from "better-auth/react"
 import { organizationClient, apiKeyClient } from "better-auth/client/plugins"
 
 export const authClient = createAuthClient({
-	baseURL: process.env.NEXT_PUBLIC_API_GATEWAY_URL,
+	baseURL: process.env.NEXT_PUBLIC_AUTH_URL || process.env.NEXT_PUBLIC_API_GATEWAY_URL || "https://dev.api.crowai.dev",
 	basePath: "/api/v1/auth",
 	fetchOptions: {
 		credentials: "include",
