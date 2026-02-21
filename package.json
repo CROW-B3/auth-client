@@ -11,7 +11,8 @@
 		"deploy:dev": "opennextjs-cloudflare build && wrangler deploy --env dev",
 		"upload": "opennextjs-cloudflare build && opennextjs-cloudflare upload",
 		"preview": "opennextjs-cloudflare build && opennextjs-cloudflare preview",
-		"cf-typegen": "wrangler types --env-interface CloudflareEnv ./cloudflare-env.d.ts"
+		"cf-typegen": "wrangler types --env-interface CloudflareEnv ./cloudflare-env.d.ts",
+		"test:e2e": "playwright test"
 	},
 	"dependencies": {
 		"@b3-crow/ui-kit": "^0.0.34",
@@ -36,6 +37,7 @@
 	},
 	"devDependencies": {
 		"@eslint/eslintrc": "^3.3.3",
+		"@playwright/test": "^1.58.2",
 		"@tailwindcss/postcss": "^4.1.18",
 		"@types/node": "^20.19.27",
 		"@types/react": "^19.2.7",
