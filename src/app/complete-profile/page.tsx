@@ -40,18 +40,6 @@ export default function CompleteProfilePage() {
 				}
 
 				setName(session.data.user.name || "");
-
-				const API_GATEWAY_URL = process.env.NEXT_PUBLIC_API_GATEWAY_URL || "http://localhost:8000";
-				const userResponse = await fetch(
-					`${API_GATEWAY_URL}/api/v1/users/by-auth-id/${session.data.user.id}`,
-					{ credentials: "include" }
-				);
-
-				if (userResponse.ok) {
-					router.push("/organization");
-					return;
-				}
-
 				setUserId(session.data.user.id);
 				setIsLoading(false);
 			} catch {
