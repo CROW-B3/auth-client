@@ -276,6 +276,21 @@ export default function InviteTeamPage() {
 			return;
 		}
 
+		try {
+			const API_GATEWAY_URL = process.env.NEXT_PUBLIC_API_GATEWAY_URL || "http://localhost:8000";
+			const res = await fetch(
+				`${API_GATEWAY_URL}/api/v1/auth/team-invitations/invitations/${encodeURIComponent(id)}`,
+				{ method: "DELETE", credentials: "include" }
+			);
+			if (!res.ok) {
+				toast.error(`Failed to revoke invitation for ${invite.email}`);
+				return;
+			}
+		} catch {
+			toast.error(`Failed to revoke invitation for ${invite.email}`);
+			return;
+		}
+
 		setPendingInvites(removeInvite(pendingInvites, id));
 		toast.success(`Invitation to ${invite.email} revoked`);
 	};

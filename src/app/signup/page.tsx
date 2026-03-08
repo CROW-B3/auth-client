@@ -145,6 +145,26 @@ function SignUpContent() {
 
 			await new Promise(resolve => setTimeout(resolve, 500));
 
+			try {
+				const session = await import("@/lib/auth-client").then((m) => m.getSession());
+				if (session?.data?.user?.id) {
+					const { determineAuthFlowDestination } = await import("@/hooks/use-onboarding");
+					const flowResult = await determineAuthFlowDestination(session.data.user.id);
+
+					if (flowResult.targetRoute?.startsWith("/accept-invite/")) {
+						window.location.href = flowResult.targetRoute;
+						return;
+					}
+
+					if (flowResult.destination === "dashboard") {
+						const dashboardUrl = process.env.NEXT_PUBLIC_DASHBOARD_URL || "http://localhost:3002";
+						window.location.href = dashboardUrl;
+						return;
+					}
+				}
+			} catch {
+			}
+
 			window.location.href = "/complete-profile";
 
 		} catch (error) {

@@ -446,6 +446,10 @@ export const determineAuthFlowDestination = async (betterAuthUserId: string): Pr
 
 	const onboardingResult = await onboardingApi.start(betterAuthUserId);
 
+	if (onboardingResult.redirect?.startsWith("/accept-invite/")) {
+		return { destination: "onboarding", targetRoute: onboardingResult.redirect };
+	}
+
 	if (onboardingResult.redirect) {
 		return { destination: "dashboard" };
 	}
