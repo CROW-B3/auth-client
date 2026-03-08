@@ -1,6 +1,9 @@
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 
+// Truly public routes — no session required.
+// Onboarding routes (/organization, /checkout, etc.) are NOT here;
+// they require an authenticated session and are handled by ONBOARDING_ROUTES logic.
 const PUBLIC_ROUTES = [
 	"/login",
 	"/signup",
@@ -9,15 +12,6 @@ const PUBLIC_ROUTES = [
 	"/terms",
 	"/privacy",
 	"/",
-	"/organization",
-	"/choose-modules",
-	"/checkout",
-	"/checkout/cancel",
-	"/checkout/success",
-	"/connect-products",
-	"/setup-components",
-	"/invite-team",
-	"/complete-profile",
 ];
 
 const ONBOARDING_ROUTES = [
