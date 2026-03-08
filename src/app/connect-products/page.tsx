@@ -257,7 +257,15 @@ export default function ConnectProductsPage() {
 
 	const validateFeedUrl = (url: string): boolean => {
 		if (!url.trim()) { setUrlValidationError("Please enter a URL"); return false; }
-		try { new URL(url); setUrlValidationError(""); return true; }
+		try {
+			const parsed = new URL(url);
+			if (parsed.protocol !== 'https:') {
+				setUrlValidationError("Only HTTPS URLs are accepted");
+				return false;
+			}
+			setUrlValidationError("");
+			return true;
+		}
 		catch { setUrlValidationError("Please enter a valid URL"); return false; }
 	};
 

@@ -124,7 +124,26 @@ export default function ConnectCCTVPage() {
 							</div>
 						</div>
 
-						<div className="mt-2">
+						<div className="mt-2 space-y-3">
+							<div className="rounded-lg border border-white/10 bg-white/[0.02] p-4 space-y-3">
+								<h3 className="text-sm font-medium text-white">Prerequisites</h3>
+								<ul className="text-xs text-gray-400 space-y-1 list-disc list-inside">
+									<li>ffmpeg installed and available in PATH</li>
+									<li>Node.js 18+ installed</li>
+									<li>Python 3.x + opencv-python (optional, for intelligent keyframe selection)</li>
+								</ul>
+								<h3 className="text-sm font-medium text-white mt-3">Install CCTV CLI</h3>
+								<div className="rounded-md bg-black/40 border border-white/5 p-3 font-mono text-xs text-gray-300">
+									npm install -g @b3-crow/cctv-cli
+								</div>
+								<h3 className="text-sm font-medium text-white mt-3">Stream to CROW</h3>
+								<div className="rounded-md bg-black/40 border border-white/5 p-3 font-mono text-xs text-gray-300 break-all">
+									cctv stream --url wss://dev.cctv.crowai.dev/ws --apiKey crow_xxx
+								</div>
+								<p className="text-xs text-gray-500">
+									The CLI extracts 1 frame/sec via ffmpeg and streams over WebSocket to the ingest service.
+								</p>
+							</div>
 							<RunAgentCard command={agentCommand} />
 						</div>
 
