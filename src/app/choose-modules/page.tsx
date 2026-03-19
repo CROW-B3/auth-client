@@ -12,6 +12,7 @@ import {
 	CheckoutSummary,
 	ToggleOption
 } from "@b3-crow/ui-kit";
+import { useRouter } from "next/navigation";
 import toast from "react-hot-toast";
 import { LuArrowRight, LuLoader } from "react-icons/lu";
 import { PLANS, type PlanType, type BillingPeriod } from "@/config/plans";
@@ -20,6 +21,7 @@ import { useOnboardingStore } from "@/stores/onboarding-store";
 import { useSubmitPlan, useCreateCheckoutSession, useOnboardingGuard } from "@/hooks/use-onboarding";
 
 export default function ChoosePlanPage() {
+	const router = useRouter();
 	const { selectedPlans, billingPeriod, autoScale, onboardingId, togglePlan, setBillingPeriod, setAutoScale } = useOnboardingStore();
 	const submitPlan = useSubmitPlan();
 	const createCheckoutSession = useCreateCheckoutSession();
@@ -73,7 +75,15 @@ export default function ChoosePlanPage() {
 			});
 
 			if (checkoutResult.url) {
-				window.location.href = checkoutResult.url;
+				// Check if this is a mock session (local dev without real Stripe key)
+				if (checkoutResult.sessionId?.startsWith('cs_test_') && checkoutResult.url.includes('checkout.stripe.com')) {
+					// For local dev with mock Stripe, skip to success page directly
+					toast.success('Payment simulated (local dev mode)');
+					router.push(`/checkout/success?session_id=${checkoutResult.sessionId}`);
+				} else {
+					// Real Stripe checkout
+					window.location.href = checkoutResult.url;
+				}
 			}
 		} catch (error) {
 			toast.error(error instanceof Error ? error.message : "Something went wrong");
