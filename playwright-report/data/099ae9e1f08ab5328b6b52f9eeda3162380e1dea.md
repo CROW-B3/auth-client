@@ -1,0 +1,47 @@
+# Page snapshot
+
+```yaml
+- generic [active] [ref=e1]:
+  - generic [ref=e2]:
+    - navigation [ref=e3]:
+      - link "CROW Logo CROW" [ref=e5] [cursor=pointer]:
+        - /url: /
+        - generic [ref=e6]:
+          - img "CROW Logo" [ref=e7]
+          - generic [ref=e8]: CROW
+      - generic [ref=e10]:
+        - text: Already have an account?
+        - link "Log in" [ref=e11] [cursor=pointer]:
+          - /url: /login
+    - main [ref=e12]:
+      - generic [ref=e13]:
+        - generic [ref=e14]:
+          - generic [ref=e15]: Sign Up
+          - heading "Create your CROW account." [level=1] [ref=e16]
+          - paragraph [ref=e17]: Start unifying Web, CCTV, and Social signals.
+        - generic [ref=e19]:
+          - generic [ref=e20]:
+            - textbox "Full name" [ref=e24]
+            - textbox "Work email" [ref=e28]
+            - textbox "Create password" [ref=e32]
+          - generic [ref=e34]:
+            - checkbox "I agree to the Terms and Privacy Policy." [ref=e36] [cursor=pointer]
+            - generic [ref=e37] [cursor=pointer]:
+              - text: I agree to the
+              - link "Terms" [ref=e38]:
+                - /url: /terms
+              - text: and
+              - link "Privacy Policy" [ref=e39]:
+                - /url: /privacy
+              - text: .
+          - button "Continue" [ref=e41]:
+            - text: Continue
+            - img [ref=e43]
+        - generic [ref=e45]:
+          - generic [ref=e49]: Or
+          - button "Continue with Google" [ref=e52]:
+            - generic [ref=e53]:
+              - img [ref=e54]
+              - text: Continue with Google
+  - alert [ref=e60]
+```

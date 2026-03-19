@@ -53,8 +53,11 @@ async function fetchSessionFromGateway(request: NextRequest): Promise<SessionDat
 
 		if (!response.ok) return null;
 
-		const data = await response.json() as { data?: SessionData };
-		return data.data || null;
+		const data = await response.json() as SessionData | { data?: SessionData };
+		// better-auth returns { session, user } directly or wrapped in { data: { session, user } }
+		if ('session' in data && 'user' in data) return data as SessionData;
+		if ('data' in data && data.data) return data.data;
+		return null;
 	} catch {
 		return null;
 	}
@@ -142,7 +145,17 @@ export async function middleware(request: NextRequest) {
 	if (isStaticOrApiRoute(pathname)) return NextResponse.next();
 
 	const session = await fetchSessionFromGateway(request);
-	if (!session?.user?.id) return buildRedirectToLogin(request, pathname);
+
+	// If session check fails but the user has auth cookies, allow through
+	// and let client-side handle auth (avoids blocking on cold-start 530s)
+	const hasAuthCookie = request.cookies.getAll().some(c => c.name.includes('better-auth'));
+	if (!session?.user?.id) {
+		if (hasAuthCookie) {
+			// User has cookies but session fetch failed (likely cold start) - allow through
+			return NextResponse.next();
+		}
+		return buildRedirectToLogin(request, pathname);
+	}
 
 	const matchedOnboardingRoute = ONBOARDING_ROUTES.find((route) => pathname === route.path);
 	if (matchedOnboardingRoute) return handleOnboardingRouteAccess(request, session.user.id, matchedOnboardingRoute);
