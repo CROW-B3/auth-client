@@ -48,3 +48,8 @@ next-env.d.ts
 .env.test.local
 .env.production.local
 !.env.example
+
+# Playwright CLI artifacts
+.playwright-cli/
+.playwright/
+.env.local.backup
