@@ -7,6 +7,7 @@ import { LuGlobe, LuVideo, LuSkipForward } from "react-icons/lu";
 import { TbSocial } from "react-icons/tb";
 import { motion } from "framer-motion";
 import { useOnboardingStore } from "@/stores/onboarding-store";
+import { useSkipSources } from "@/hooks/use-onboarding";
 
 type ModuleType = "web" | "cctv" | "social";
 
@@ -46,7 +47,8 @@ function getSelectedSources(modules: Record<ModuleType, boolean> | null): Connec
 
 export default function ConnectSourcesPage() {
 	const router = useRouter();
-	const { selectedPlans } = useOnboardingStore();
+	const { selectedPlans, onboardingId } = useOnboardingStore();
+	const skipSources = useSkipSources();
 
 	const selectedModules: Record<ModuleType, boolean> | null = selectedPlans.length > 0
 		? { web: selectedPlans.includes("web"), cctv: selectedPlans.includes("cctv"), social: selectedPlans.includes("social") }
@@ -58,7 +60,10 @@ export default function ConnectSourcesPage() {
 		router.push(`/setup-components/${sourceId}`);
 	};
 
-	const handleSkip = () => {
+	const handleSkip = async () => {
+		if (onboardingId) {
+			await skipSources.mutateAsync(onboardingId);
+		}
 		router.push("/invite-team");
 	};
 
