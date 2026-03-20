@@ -163,14 +163,14 @@ function SignUpContent() {
 					}
 
 					if (flowResult.destination === "onboarding" && flowResult.targetRoute) {
-						window.location.href = flowResult.targetRoute;
+						router.push(flowResult.targetRoute);
 						return;
 					}
 				}
 			} catch {
 			}
 
-			window.location.href = "/organization";
+			router.push("/organization");
 
 		} catch (error) {
 			if (error instanceof z.ZodError) {
