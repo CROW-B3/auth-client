@@ -24,7 +24,7 @@ const ONBOARDING_ROUTES = [
 	{ path: "/invite-team", step: 6 },
 ];
 
-const API_GATEWAY_URL = process.env.NEXT_PUBLIC_API_GATEWAY_URL || "http://localhost:8000";
+const API_GATEWAY_URL = process.env.NEXT_PUBLIC_API_GATEWAY_URL || process.env.API_GATEWAY_URL || "https://dev.api.crowai.dev";
 
 interface SessionUser {
 	id: string;
@@ -71,26 +71,13 @@ async function fetchOnboardingStatusByUserId(userId: string, request: NextReques
 
 		if (response.status === 404 || !response.ok) return null;
 
-		const data = await response.json() as { onboarding?: { currentStep: string; completedSteps: string } };
+		const data = await response.json() as { onboarding?: { currentStep: string; completedSteps: string; status?: string } };
 		return data.onboarding || null;
 	} catch {
 		return null;
 	}
 }
 
-async function fetchUserByAuthenticationId(userId: string, request: NextRequest): Promise<{ organizationId?: string } | null> {
-	try {
-		const response = await fetch(`${API_GATEWAY_URL}/api/v1/users/by-auth-id/${userId}`, {
-			headers: extractRequestCookieHeaders(request),
-		});
-
-		if (response.status === 404 || !response.ok) return null;
-
-		return await response.json() as { organizationId?: string };
-	} catch {
-		return null;
-	}
-}
 
 function isStaticOrApiRoute(pathname: string): boolean {
 	return pathname.startsWith("/api") || pathname.startsWith("/_next") || pathname.includes(".") || pathname.startsWith("/setup-components/");
@@ -115,23 +102,40 @@ function buildRedirectToPath(request: NextRequest, targetPath: string): NextResp
 }
 
 function resolveOnboardingRedirectPath(completedSteps: string[], requestedStep: number): string | null {
-	if (completedSteps.length >= requestedStep) return null;
+	// Allow access to step N if the user has completed at least N-1 steps.
+	// e.g. 0 completed steps → can access step 1; 1 completed step → can access step 2, etc.
+	if (completedSteps.length + 1 >= requestedStep) return null;
 
 	const targetRoute = ONBOARDING_ROUTES.find((route) => route.step === completedSteps.length + 1);
 	return targetRoute?.path ?? null;
 }
 
 async function handleOnboardingRouteAccess(request: NextRequest, sessionUserId: string, onboardingRoute: typeof ONBOARDING_ROUTES[number]): Promise<NextResponse> {
-	const user = await fetchUserByAuthenticationId(sessionUserId, request);
-	if (user?.organizationId) return buildRedirectToDashboard();
-
 	if (onboardingRoute.path === "/complete-profile") return NextResponse.next();
 
 	const onboarding = await fetchOnboardingStatusByUserId(sessionUserId, request);
-	if (!onboarding) return buildRedirectToPath(request, "/organization");
+
+	console.log(`[middleware:onboarding] path=${onboardingRoute.path} step=${onboardingRoute.step} userId=${sessionUserId} onboarding=${JSON.stringify(onboarding)}`);
+
+	if (!onboarding) {
+		// No onboarding record found — do NOT redirect to dashboard based on organizationId,
+		// because the record may not have propagated yet (D1 eventual consistency) or the
+		// fetch failed transiently. Just guide the user to step 1 if they're ahead of it.
+		console.log(`[middleware:onboarding] no-onboarding — redirecting step>1 to /organization`);
+		if (onboardingRoute.step > 1) return buildRedirectToPath(request, "/organization");
+		return NextResponse.next();
+	}
+
+	// User has an active onboarding record — check its status.
+	const onboardingStatus = (onboarding as { currentStep?: string; completedSteps?: string; status?: string }).status;
+	console.log(`[middleware:onboarding] status=${onboardingStatus} completedSteps=${onboarding.completedSteps}`);
+	if (onboardingStatus === "completed") {
+		return buildRedirectToDashboard();
+	}
 
 	const completedSteps = JSON.parse(onboarding.completedSteps || "[]");
 	const redirectPath = resolveOnboardingRedirectPath(completedSteps, onboardingRoute.step);
+	console.log(`[middleware:onboarding] completedSteps=${JSON.stringify(completedSteps)} redirectPath=${redirectPath}`);
 
 	if (redirectPath) return buildRedirectToPath(request, redirectPath);
 
