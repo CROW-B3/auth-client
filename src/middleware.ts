@@ -1,9 +1,6 @@
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 
-// Truly public routes — no session required.
-// Onboarding routes (/organization, /checkout, etc.) are NOT here;
-// they require an authenticated session and are handled by ONBOARDING_ROUTES logic.
 const PUBLIC_ROUTES = [
 	"/login",
 	"/signup",
@@ -54,7 +51,6 @@ async function fetchSessionFromGateway(request: NextRequest): Promise<SessionDat
 		if (!response.ok) return null;
 
 		const data = await response.json() as SessionData | { data?: SessionData };
-		// better-auth returns { session, user } directly or wrapped in { data: { session, user } }
 		if ('session' in data && 'user' in data) return data as SessionData;
 		if ('data' in data && data.data) return data.data;
 		return null;
@@ -102,8 +98,6 @@ function buildRedirectToPath(request: NextRequest, targetPath: string): NextResp
 }
 
 function resolveOnboardingRedirectPath(completedSteps: string[], requestedStep: number): string | null {
-	// Allow access to step N if the user has completed at least N-1 steps.
-	// e.g. 0 completed steps → can access step 1; 1 completed step → can access step 2, etc.
 	if (completedSteps.length + 1 >= requestedStep) return null;
 
 	const targetRoute = ONBOARDING_ROUTES.find((route) => route.step === completedSteps.length + 1);
@@ -118,15 +112,10 @@ async function handleOnboardingRouteAccess(request: NextRequest, sessionUserId: 
 	console.log(`[middleware:onboarding] path=${onboardingRoute.path} step=${onboardingRoute.step} userId=${sessionUserId} onboarding=${JSON.stringify(onboarding)}`);
 
 	if (!onboarding) {
-		// No onboarding record found — do NOT redirect to dashboard based on organizationId,
-		// because the record may not have propagated yet (D1 eventual consistency) or the
-		// fetch failed transiently. Just guide the user to step 1 if they're ahead of it.
 		console.log(`[middleware:onboarding] no-onboarding — redirecting step>1 to /organization`);
 		if (onboardingRoute.step > 1) return buildRedirectToPath(request, "/organization");
 		return NextResponse.next();
 	}
-
-	// User has an active onboarding record — check its status.
 	const onboardingStatus = (onboarding as { currentStep?: string; completedSteps?: string; status?: string }).status;
 	console.log(`[middleware:onboarding] status=${onboardingStatus} completedSteps=${onboarding.completedSteps}`);
 	if (onboardingStatus === "completed") {
@@ -150,12 +139,9 @@ export async function middleware(request: NextRequest) {
 
 	const session = await fetchSessionFromGateway(request);
 
-	// If session check fails but the user has auth cookies, allow through
-	// and let client-side handle auth (avoids blocking on cold-start 530s)
 	const hasAuthCookie = request.cookies.getAll().some(c => c.name.includes('better-auth'));
 	if (!session?.user?.id) {
 		if (hasAuthCookie) {
-			// User has cookies but session fetch failed (likely cold start) - allow through
 			return NextResponse.next();
 		}
 		return buildRedirectToLogin(request, pathname);

@@ -75,13 +75,10 @@ export default function ChoosePlanPage() {
 			});
 
 			if (checkoutResult.url) {
-				// Check if this is a mock session (local dev without real Stripe key)
 				if (checkoutResult.sessionId?.startsWith('cs_test_') && checkoutResult.url.includes('checkout.stripe.com')) {
-					// For local dev with mock Stripe, skip to success page directly
 					toast.success('Payment simulated (local dev mode)');
 					router.push(`/checkout/success?session_id=${checkoutResult.sessionId}`);
 				} else {
-					// Real Stripe checkout
 					window.location.href = checkoutResult.url;
 				}
 			}
