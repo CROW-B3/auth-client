@@ -134,7 +134,7 @@ async function handleOnboardingRouteAccess(request: NextRequest, sessionUserId: 
 export async function middleware(request: NextRequest) {
 	const { pathname } = request.nextUrl;
 
-	if (PUBLIC_ROUTES.includes(pathname)) return NextResponse.next();
+	if (PUBLIC_ROUTES.includes(pathname) || pathname.startsWith("/accept-invite/")) return NextResponse.next();
 	if (isStaticOrApiRoute(pathname)) return NextResponse.next();
 
 	const session = await fetchSessionFromGateway(request);
