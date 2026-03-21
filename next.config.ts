@@ -16,22 +16,12 @@ const securityHeaders = [
 	}
 ];
 
-const apiGatewayUrl = process.env.NEXT_PUBLIC_API_GATEWAY_URL || "http://localhost:8000";
-
 const nextConfig: NextConfig = {
 	async redirects() {
 		return [
 			{ source: '/', destination: '/login', permanent: false },
 			{ source: '/sign-in', destination: '/login', permanent: false },
 			{ source: '/sign-up', destination: '/signup', permanent: false },
-		];
-	},
-	async rewrites() {
-		return [
-			{
-				source: "/api/:path*",
-				destination: `${apiGatewayUrl}/api/:path*`,
-			},
 		];
 	},
 	async headers() {
