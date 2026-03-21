@@ -150,7 +150,7 @@ function AcceptInviteContent() {
 						transition={{ delay: 0.5 }}
 					>
 						<button
-							onClick={() => router.push("/sign-in")}
+							onClick={() => router.push("/login")}
 							className="text-sm text-zinc-400 hover:text-white transition-colors"
 							type="button"
 						>
