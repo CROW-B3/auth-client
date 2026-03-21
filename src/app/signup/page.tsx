@@ -18,6 +18,10 @@ const isUserAlreadyExistsError = (error: { code?: string; message?: string }): b
 	return message.includes("already exists") || message.includes("already registered");
 };
 
+const isDomainNotAllowedError = (error: { code?: string; message?: string }): boolean => {
+	return error.code === "DOMAIN_NOT_ALLOWED";
+};
+
 interface PendingInvitation {
 	organizationId: string;
 	organizationName: string;
@@ -66,12 +70,6 @@ function SignUpContent() {
 		try {
 			const validatedData = signUpSchema.parse(data);
 
-			if (pendingInvitation && validatedData.email !== pendingInvitation.email) {
-				toast.error(`Please use the invited email: ${pendingInvitation.email}`);
-				setIsSubmitting(false);
-				return;
-			}
-
 			const { error } = await signUp.email({
 				email: validatedData.email,
 				password: validatedData.password,
@@ -82,6 +80,10 @@ function SignUpContent() {
 				if (isUserAlreadyExistsError(error)) {
 					toast.error("An account with this email already exists. Please sign in instead.");
 					router.push("/login");
+					return;
+				}
+				if (isDomainNotAllowedError(error)) {
+					toast.error("Consumer email domains are not accepted. Please use a business email address.");
 					return;
 				}
 				toast.error(error.message || "Failed to create account");
