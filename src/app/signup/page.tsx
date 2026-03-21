@@ -59,6 +59,8 @@ function SignUpContent() {
 		const data = {
 			...formValues,
 			terms: formValues.terms === "on" ? "on" : "",
+			// Disabled inputs aren't submitted in FormData; use pendingInvitation.email when present
+			...(pendingInvitation ? { email: pendingInvitation.email } : {}),
 		};
 
 		try {

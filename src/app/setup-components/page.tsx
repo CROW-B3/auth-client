@@ -7,7 +7,7 @@ import { LuGlobe, LuVideo, LuSkipForward } from "react-icons/lu";
 import { TbSocial } from "react-icons/tb";
 import { motion } from "framer-motion";
 import { useOnboardingStore } from "@/stores/onboarding-store";
-import { useSkipSources } from "@/hooks/use-onboarding";
+
 
 type ModuleType = "web" | "cctv" | "social";
 
@@ -48,8 +48,6 @@ function getSelectedSources(modules: Record<ModuleType, boolean> | null): Connec
 export default function ConnectSourcesPage() {
 	const router = useRouter();
 	const { selectedPlans, onboardingId } = useOnboardingStore();
-	const skipSources = useSkipSources();
-
 	const selectedModules: Record<ModuleType, boolean> | null = selectedPlans.length > 0
 		? { web: selectedPlans.includes("web"), cctv: selectedPlans.includes("cctv"), social: selectedPlans.includes("social") }
 		: null;
@@ -63,12 +61,18 @@ export default function ConnectSourcesPage() {
 	const handleSkip = async () => {
 		if (onboardingId) {
 			try {
-				await skipSources.mutateAsync(onboardingId);
+				const apiUrl = process.env.NEXT_PUBLIC_API_GATEWAY_URL || "http://localhost:8000";
+				await fetch(`${apiUrl}/api/v1/auth/onboarding/${onboardingId}/step/sources/skip`, {
+					method: "PATCH",
+					credentials: "include",
+					headers: { "Content-Type": "application/json" },
+				});
 			} catch {
 				// proceed anyway
 			}
 		}
-		router.push("/invite-team");
+		// Use hard navigation so middleware re-evaluates completedSteps from DB
+		window.location.href = "/invite-team";
 	};
 
 	useEffect(() => {
