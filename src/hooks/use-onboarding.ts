@@ -275,9 +275,10 @@ const onboardingApi = {
 		inviterId: string;
 		permissions?: Record<string, unknown>;
 	}): Promise<{ success: boolean; sent: number; failed: number; errors: Array<{ email: string; error: string }> }> => {
+		const headers = await createAuthHeaders();
 		const response = await fetch(`${API_GATEWAY_URL}/api/v1/auth/team-invitations/send-invites`, {
 			method: "POST",
-			headers: { "Content-Type": "application/json" },
+			headers,
 			credentials: "include",
 			body: JSON.stringify(input),
 		});
