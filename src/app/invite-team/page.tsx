@@ -180,48 +180,49 @@ export default function InviteTeamPage() {
 			const { onboarding } = await onboardingResponse.json() as { onboarding: { orgBuilderId?: string; userBuilderId?: string } };
 
 			if (onboarding.orgBuilderId && onboarding.orgBuilderId !== "null") {
-				const finalizeOrgResponse = await fetch(
-					`${API_GATEWAY_URL}/api/v1/organizations/org-builders/${onboarding.orgBuilderId}/finalize`,
-					{
-						method: "POST",
-						headers: { "Content-Type": "application/json" },
-						credentials: "include",
-						body: JSON.stringify({}),
+				try {
+					const finalizeOrgResponse = await fetch(
+						`${API_GATEWAY_URL}/api/v1/organizations/org-builders/${onboarding.orgBuilderId}/finalize`,
+						{
+							method: "POST",
+							headers: { "Content-Type": "application/json" },
+							credentials: "include",
+							body: JSON.stringify({}),
+						}
+					);
+					if (!finalizeOrgResponse.ok) {
+						console.error("Failed to finalize organization, proceeding anyway");
 					}
-				);
-
-				if (!finalizeOrgResponse.ok) {
-					toast.error("Failed to finalize organization");
-					return;
+				} catch {
+					console.error("Error finalizing organization, proceeding anyway");
 				}
 			}
 
 			if (onboarding.userBuilderId && onboarding.userBuilderId !== "null") {
-				const session = await import("@/lib/auth-client").then((m) => m.getSession());
-				const userData = session?.data?.user;
+				try {
+					const session = await import("@/lib/auth-client").then((m) => m.getSession());
+					const userData = session?.data?.user;
 
-				if (!userData) {
-					toast.error("Session expired. Please sign in again.");
-					return;
-				}
-
-				const finalizeUserResponse = await fetch(
-					`${API_GATEWAY_URL}/api/v1/users/user-builders/${onboarding.userBuilderId}/finalize`,
-					{
-						method: "POST",
-						headers: { "Content-Type": "application/json" },
-						credentials: "include",
-						body: JSON.stringify({
-							email: userData.email,
-							name: userData.name,
-							onboardingId: onboardingId,
-						}),
+					if (userData) {
+						const finalizeUserResponse = await fetch(
+							`${API_GATEWAY_URL}/api/v1/users/user-builders/${onboarding.userBuilderId}/finalize`,
+							{
+								method: "POST",
+								headers: { "Content-Type": "application/json" },
+								credentials: "include",
+								body: JSON.stringify({
+									email: userData.email,
+									name: userData.name,
+									onboardingId: onboardingId,
+								}),
+							}
+						);
+						if (!finalizeUserResponse.ok) {
+							console.error("Failed to finalize user, proceeding anyway");
+						}
 					}
-				);
-
-				if (!finalizeUserResponse.ok) {
-					toast.error("Failed to finalize user");
-					return;
+				} catch {
+					console.error("Error finalizing user, proceeding anyway");
 				}
 			}
 

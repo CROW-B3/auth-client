@@ -62,7 +62,11 @@ export default function ConnectSourcesPage() {
 
 	const handleSkip = async () => {
 		if (onboardingId) {
-			await skipSources.mutateAsync(onboardingId);
+			try {
+				await skipSources.mutateAsync(onboardingId);
+			} catch {
+				// proceed anyway
+			}
 		}
 		router.push("/invite-team");
 	};
