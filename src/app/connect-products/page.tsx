@@ -123,7 +123,7 @@ export default function ConnectProductsPage() {
 	const [feedUrl, setFeedUrl] = useState("");
 	const [urlValidationError, setUrlValidationError] = useState("");
 
-	const { onboardingId } = useOnboardingStore();
+	const { onboardingId, betterAuthOrgId } = useOnboardingStore();
 	const submitProducts = useSubmitProducts();
 	const skipProducts = useSkipProducts();
 
@@ -155,7 +155,7 @@ export default function ConnectProductsPage() {
 		if (!onboardingId) return;
 
 		try {
-			triggerBackgroundProductCrawl(onboardingId, onboardingId, "url", feedUrl);
+			triggerBackgroundProductCrawl(betterAuthOrgId || onboardingId, onboardingId, "url", feedUrl);
 			await submitProducts.mutateAsync({ onboardingId, input: { sourceType: "url", sourceValue: feedUrl } });
 			router.push("/setup-components");
 		} catch {
