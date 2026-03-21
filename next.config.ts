@@ -15,10 +15,6 @@ const ContentSecurityPolicy = `
 
 const securityHeaders = [
 	{
-		key: 'Content-Security-Policy',
-		value: ContentSecurityPolicy.replace(/\s{2,}/g, ' ').trim()
-	},
-	{
 		key: 'X-Frame-Options',
 		value: 'SAMEORIGIN'
 	},
