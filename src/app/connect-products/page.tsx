@@ -7,7 +7,7 @@ import { LuLink, LuUpload, LuFile, LuX, LuArrowRight, LuSkipForward, LuCheck } f
 import { motion } from "framer-motion";
 import toast from "react-hot-toast";
 import { useOnboardingStore } from "@/stores/onboarding-store";
-import { useSubmitProducts, useOnboardingGuard } from "@/hooks/use-onboarding";
+import { useSubmitProducts, useSkipProducts, useOnboardingGuard } from "@/hooks/use-onboarding";
 
 type ProductUploadMethod = "url" | "file" | null;
 
@@ -252,6 +252,7 @@ export default function ConnectProductsPage() {
 
 	const { onboardingId } = useOnboardingStore();
 	const submitProducts = useSubmitProducts();
+	const skipProducts = useSkipProducts();
 
 	useOnboardingGuard("products");
 
@@ -311,7 +312,15 @@ export default function ConnectProductsPage() {
 		}
 	};
 
-	const handleClickSkip = () => router.push("/setup-components");
+	const handleClickSkip = async () => {
+		if (!onboardingId) { router.push("/setup-components"); return; }
+		try {
+			await skipProducts.mutateAsync(onboardingId);
+		} catch {
+			// ignore skip errors, proceed anyway
+		}
+		router.push("/setup-components");
+	};
 
 	return (
 		<div className="min-h-screen flex flex-col antialiased selection:bg-violet-500/30 selection:text-violet-200 overflow-x-hidden relative">
@@ -341,7 +350,7 @@ export default function ConnectProductsPage() {
 					<ConnectionReadyIndicator activeMethod={activeUploadMethod} />
 				</motion.div>
 				<NavigationButtons
-					isSubmitting={submitProducts.isPending}
+					isSubmitting={submitProducts.isPending || skipProducts.isPending}
 					onClickContinue={handleClickContinue}
 					onClickSkip={handleClickSkip}
 				/>
