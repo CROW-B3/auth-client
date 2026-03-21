@@ -112,8 +112,7 @@ async function handleOnboardingRouteAccess(request: NextRequest, sessionUserId: 
 	console.log(`[middleware:onboarding] path=${onboardingRoute.path} step=${onboardingRoute.step} userId=${sessionUserId} onboarding=${JSON.stringify(onboarding)}`);
 
 	if (!onboarding) {
-		console.log(`[middleware:onboarding] no-onboarding — redirecting step>1 to /organization`);
-		if (onboardingRoute.step > 1) return buildRedirectToPath(request, "/organization");
+		console.log(`[middleware:onboarding] no-onboarding — allowing through (client-side guard handles access)`);
 		return NextResponse.next();
 	}
 	const onboardingStatus = (onboarding as { currentStep?: string; completedSteps?: string; status?: string }).status;

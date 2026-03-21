@@ -7,6 +7,7 @@ import { LuLoader } from "react-icons/lu";
 import toast from "react-hot-toast";
 import { getSession } from "@/lib/auth-client";
 import { useDetermineAuthFlow } from "@/hooks/use-onboarding";
+import { useOnboardingStore } from "@/stores/onboarding-store";
 
 const processPendingInvitation = async (
 	pendingInvitationStr: string,
@@ -53,6 +54,7 @@ export default function AuthCallbackPage() {
 	const router = useRouter();
 	const [status, setStatus] = useState("Verifying your account...");
 	const determineAuthFlow = useDetermineAuthFlow();
+	const resetOnboarding = useOnboardingStore((s) => s.reset);
 	const hasRun = useRef(false);
 
 	useEffect(() => {
@@ -98,6 +100,7 @@ export default function AuthCallbackPage() {
 
 					if (isOAuth && session.data.user.image) {
 						setStatus("Setting up your profile...");
+						resetOnboarding();
 
 						try {
 							await fetch(session.data.user.image, {
@@ -113,6 +116,7 @@ export default function AuthCallbackPage() {
 					}
 
 					setStatus("Please complete your profile...");
+					resetOnboarding();
 					router.push("/complete-profile");
 					return;
 				}
