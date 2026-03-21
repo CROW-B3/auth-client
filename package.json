@@ -12,7 +12,22 @@
 		"upload": "opennextjs-cloudflare build && opennextjs-cloudflare upload",
 		"preview": "opennextjs-cloudflare build && opennextjs-cloudflare preview",
 		"cf-typegen": "wrangler types --env-interface CloudflareEnv ./cloudflare-env.d.ts",
-		"test:e2e": "playwright test"
+		"test:e2e": "playwright test",
+		"test:e2e:ui": "playwright test --ui",
+		"test:e2e:headed": "playwright test --headed",
+		"test:e2e:debug": "playwright test --debug",
+		"test:e2e:auth": "playwright test e2e/auth.spec.ts",
+		"test:e2e:api": "playwright test e2e/api.spec.ts",
+		"test:e2e:nav": "playwright test e2e/navigation.spec.ts",
+		"test:e2e:a11y": "playwright test e2e/accessibility.spec.ts",
+		"test:e2e:visual": "playwright test e2e/visual.spec.ts",
+		"test:e2e:perf": "playwright test e2e/performance.spec.ts",
+		"test:e2e:onboarding": "playwright test e2e/onboarding.spec.ts",
+		"test:e2e:security": "playwright test e2e/security.spec.ts",
+		"test:e2e:report": "playwright show-report",
+		"test:e2e:chromium": "playwright test --project=chromium",
+		"test:e2e:firefox": "playwright test --project=firefox",
+		"test:e2e:webkit": "playwright test --project=webkit"
 	},
 	"dependencies": {
 		"@b3-crow/ui-kit": "^0.0.34",

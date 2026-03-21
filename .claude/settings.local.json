@@ -1,0 +1,10 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(npx playwright test:*)",
+      "Bash(bun install)",
+      "Bash(bunx playwright install:*)",
+      "Bash(bunx playwright test:*)"
+    ]
+  }
+}
