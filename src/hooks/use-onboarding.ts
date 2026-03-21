@@ -206,6 +206,18 @@ const onboardingApi = {
 		return data.onboarding;
 	},
 
+	skipProducts: async (onboardingId: string): Promise<OnboardingRecord> => {
+		const headers = await createAuthHeaders();
+		const response = await fetch(`${API_GATEWAY_URL}/api/v1/auth/onboarding/${onboardingId}/step/products/skip`, {
+			method: "PATCH",
+			headers,
+			credentials: "include",
+		});
+		if (!response.ok) throw new Error("Failed to skip products step");
+		const data = (await response.json()) as OnboardingApiResponse;
+		return data.onboarding;
+	},
+
 	skipSources: async (onboardingId: string): Promise<OnboardingRecord> => {
 		const headers = await createAuthHeaders();
 		const response = await fetch(`${API_GATEWAY_URL}/api/v1/auth/onboarding/${onboardingId}/step/sources/skip`, {
@@ -357,6 +369,17 @@ export const useSubmitSource = () => {
 	return useMutation({
 		mutationFn: ({ onboardingId, input }: { onboardingId: string; input: SourceStepInput }) =>
 			onboardingApi.submitSource(onboardingId, input),
+		onSuccess: (data) => {
+			queryClient.setQueryData(["onboarding", data.id], data);
+		},
+	});
+};
+
+export const useSkipProducts = () => {
+	const queryClient = useQueryClient();
+
+	return useMutation({
+		mutationFn: (onboardingId: string) => onboardingApi.skipProducts(onboardingId),
 		onSuccess: (data) => {
 			queryClient.setQueryData(["onboarding", data.id], data);
 		},
