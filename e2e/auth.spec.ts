@@ -32,6 +32,6 @@ test.describe('Signup Page', () => {
     await page.goto('/signup')
     await expect(page.locator('input[type="email"], input[name="email"]')).toBeVisible()
     await expect(page.locator('input[type="password"]')).toBeVisible()
-    await expect(page.getByRole('button', { name: /sign up|create|register/i })).toBeVisible()
+    await expect(page.getByRole('button', { name: 'Continue', exact: true })).toBeVisible()
   })
 })
