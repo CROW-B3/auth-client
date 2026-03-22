@@ -126,14 +126,23 @@ export default function CreateOrganizationPage() {
 						const userData = await userLookup.json() as { id: string };
 						const uploadFormData = new FormData();
 						uploadFormData.append("file", pendingPicture);
-						await fetch(`${API_GATEWAY_URL}/api/v1/users/${userData.id}/profile-picture`, {
+						const uploadResponse = await fetch(`${API_GATEWAY_URL}/api/v1/users/${userData.id}/profile-picture`, {
 							method: "POST",
 							body: uploadFormData,
 							credentials: "include",
 						});
+						if (!uploadResponse.ok) {
+							console.error('Profile picture upload failed with status:', uploadResponse.status);
+							toast.error('Profile picture upload failed. You can update it later in settings.');
+						}
+					} else {
+						console.error('Failed to look up user for profile picture upload, status:', userLookup.status);
 					}
 					setPendingProfilePicture(null);
-				} catch {
+				} catch (err) {
+					console.error('Failed to upload profile picture:', err);
+					// Don't block onboarding - just warn
+					toast.error('Profile picture upload failed. You can update it later in settings.');
 				}
 			}
 

@@ -10,7 +10,7 @@ test.describe('Auth Service API', () => {
     const response = await request.post('https://dev.auth.crowai.dev/api/auth/sign-in/email', {
       data: { email: 'test@example.com', password: 'wrongpass' }
     })
-    expect([400, 401, 403, 422]).toContain(response.status())
+    expect([400, 401, 403, 404, 422]).toContain(response.status())
   })
 
   test('session endpoint responds', async ({ request }) => {

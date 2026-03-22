@@ -4,6 +4,8 @@ import type { NextRequest } from "next/server";
 const PUBLIC_ROUTES = [
 	"/login",
 	"/signup",
+	"/forgot-password",
+	"/reset-password",
 	"/auth/callback",
 	"/accept-invite",
 	"/terms",
@@ -98,9 +100,9 @@ function buildRedirectToPath(request: NextRequest, targetPath: string): NextResp
 }
 
 function resolveOnboardingRedirectPath(completedSteps: string[], requestedStep: number): string | null {
-	if (completedSteps.length + 1 >= requestedStep) return null;
+	if (completedSteps.length >= requestedStep) return null;
 
-	const targetRoute = ONBOARDING_ROUTES.find((route) => route.step === completedSteps.length + 1);
+	const targetRoute = ONBOARDING_ROUTES.find((route) => route.step === completedSteps.length);
 	return targetRoute?.path ?? null;
 }
 
