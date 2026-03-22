@@ -37,6 +37,8 @@ export default function ChoosePlanPage() {
 	};
 
 	const handleProceedToPayment = async () => {
+		if (submitPlan.isPending || createCheckoutSession.isPending) return;
+
 		if (selectedPlans.length === 0) {
 			toast.error("Please select at least one module");
 			return;
@@ -194,7 +196,7 @@ You can change this later."
 						]}
 						total={{
 							amount: selectedPlans.length > 0
-								? `$${selectedPlans.length * (billingPeriod === "annual" ? 50 : 60)}`
+								? `$${selectedPlans.length * getPricePerModule(billingPeriod)}`
 								: "$—",
 							period: "mo",
 						}}

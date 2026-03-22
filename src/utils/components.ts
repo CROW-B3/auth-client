@@ -13,7 +13,8 @@ export const filterExistingEmails = (
   newEmails: string[],
   existingEmails: string[]
 ): string[] => {
-  return newEmails.filter((email) => !existingEmails.includes(email));
+  const normalizedExisting = existingEmails.map((e) => e.toLowerCase());
+  return newEmails.filter((email) => !normalizedExisting.includes(email.toLowerCase()));
 };
 
 export const findAddedEmails = (

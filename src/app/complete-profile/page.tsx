@@ -8,11 +8,15 @@ import { z } from "zod";
 import { motion } from "framer-motion";
 import toast from "react-hot-toast";
 import { getSession } from "@/lib/auth-client";
-import { setPendingProfilePicture } from "@/stores/onboarding-store";
+import { setPendingProfilePicture, useOnboardingStore } from "@/stores/onboarding-store";
 import Image from "next/image";
 
 const completeProfileSchema = z.object({
-	name: z.string().min(1, "Name is required"),
+	name: z
+		.string()
+		.min(2, "Name must be at least 2 characters")
+		.max(100, "Name must be less than 100 characters")
+		.regex(/^[\p{L}\s'-]+$/u, "Name can only contain letters, spaces, hyphens, and apostrophes"),
 });
 
 type CompleteProfileFormData = z.infer<typeof completeProfileSchema>;
@@ -26,7 +30,7 @@ export default function CompleteProfilePage() {
 	const [name, setName] = useState("");
 	const [profilePicture, setProfilePicture] = useState<File | null>(null);
 	const [previewUrl, setPreviewUrl] = useState<string | null>(null);
-	const [, setUserId] = useState<string | null>(null);
+	const { setPendingProfileName } = useOnboardingStore();
 	const fileInputRef = useRef<HTMLInputElement>(null);
 
 	useEffect(() => {
@@ -40,7 +44,6 @@ export default function CompleteProfilePage() {
 				}
 
 				setName(session.data.user.name || "");
-				setUserId(session.data.user.id);
 				setIsLoading(false);
 			} catch {
 				toast.error("Failed to load profile. Please try again.");
@@ -50,6 +53,12 @@ export default function CompleteProfilePage() {
 
 		checkSession();
 	}, [router]);
+
+	useEffect(() => {
+		return () => {
+			if (previewUrl) URL.revokeObjectURL(previewUrl);
+		};
+	}, [previewUrl]);
 
 	const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
 		const file = e.target.files?.[0];
@@ -118,7 +127,9 @@ export default function CompleteProfilePage() {
 		const formValues = Object.fromEntries(formData.entries());
 
 		try {
-			completeProfileSchema.parse(formValues);
+			const validatedData = completeProfileSchema.parse(formValues);
+
+			setPendingProfileName(validatedData.name);
 
 			if (profilePicture) {
 				setPendingProfilePicture(profilePicture);
@@ -217,6 +228,7 @@ export default function CompleteProfilePage() {
 												width={120}
 												height={120}
 												className="rounded-full object-cover"
+												unoptimized
 											/>
 											<button
 												type="button"

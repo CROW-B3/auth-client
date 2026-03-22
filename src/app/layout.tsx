@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { Sora } from "next/font/google";
 import { Toaster } from "react-hot-toast";
 import { QueryProvider } from "@/providers/query-provider";
@@ -15,6 +15,11 @@ const sora = Sora({
 export const metadata: Metadata = {
 	title: "CROW - Sign In",
 	description: "Unifying Web, CCTV, and Social signals",
+};
+
+export const viewport: Viewport = {
+	width: "device-width",
+	initialScale: 1,
 };
 
 export default function RootLayout({

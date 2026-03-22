@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, Suspense } from "react";
+import { useState, useRef, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { AnimatedBackground, Button, Input, Navbar, NavLink, PageHeader } from "@b3-crow/ui-kit";
 import { LuArrowRight, LuLoader, LuCircleCheck, LuCircleX } from "react-icons/lu";
@@ -20,6 +20,7 @@ function ResetPasswordContent() {
 	const [errors, setErrors] = useState<FormErrors<ResetPasswordFormData>>({});
 	const [isSubmitting, setIsSubmitting] = useState(false);
 	const [isSuccess, setIsSuccess] = useState(false);
+	const redirectTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
 	const isInvalidToken = error === "INVALID_TOKEN" || !token;
 
@@ -47,7 +48,7 @@ function ResetPasswordContent() {
 			setIsSuccess(true);
 			toast.success("Password reset successfully!");
 
-			setTimeout(() => {
+			redirectTimer.current = setTimeout(() => {
 				router.push("/login");
 			}, 2000);
 		} catch (err) {

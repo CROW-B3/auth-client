@@ -3,14 +3,23 @@
 import { AnimatedBackground, Button, Navbar, PageHeader, InvitationDetailsCard } from "@b3-crow/ui-kit";
 import { LuArrowRight } from "react-icons/lu";
 import { motion } from "framer-motion";
-import { MOCK_SUCCESS_FIELDS } from "@/lib/constants/mock-data";
+import { useOnboardingStore } from "@/stores/onboarding-store";
 
 export default function SuccessPage() {
+	const { organizationName, selectedPlans, billingPeriod } = useOnboardingStore();
+
+	const planLabel = selectedPlans.length > 0
+		? `${billingPeriod === "annual" ? "Annual" : "Monthly"} ${selectedPlans.map(p => p.charAt(0).toUpperCase() + p.slice(1)).join(", ")}`
+		: "No plan selected";
+
+	const successFields = [
+		{ label: "Organization", value: organizationName || "Your Organization" },
+		{ label: "Plan", value: planLabel },
+	];
+
 	const handleContinue = () => {
-		const dashboardUrl = process.env.NEXT_PUBLIC_DASHBOARD_URL;
-		if (dashboardUrl) {
-			window.location.href = dashboardUrl;
-		}
+		const dashboardUrl = process.env.NEXT_PUBLIC_DASHBOARD_URL || "http://localhost:3002";
+		window.location.href = dashboardUrl;
 	};
 
 	return (
@@ -40,7 +49,7 @@ export default function SuccessPage() {
 						transition={{ delay: 0.2 }}
 					>
 						<InvitationDetailsCard
-							fields={[...MOCK_SUCCESS_FIELDS]}
+							fields={successFields}
 						/>
 					</motion.div>
 

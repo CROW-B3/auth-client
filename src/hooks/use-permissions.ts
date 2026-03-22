@@ -1,4 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
+import { createAuthHeaders } from "@/lib/auth-token";
 
 const API_GATEWAY_URL = process.env.NEXT_PUBLIC_API_GATEWAY_URL || "http://localhost:8000";
 
@@ -33,7 +34,9 @@ export const usePermissions = (userId?: string) => {
 				throw new Error("User ID required");
 			}
 
+			const headers = await createAuthHeaders();
 			const response = await fetch(`${API_GATEWAY_URL}/api/v1/users/${userId}/permissions`, {
+				headers,
 				credentials: "include",
 			});
 
@@ -57,7 +60,9 @@ export const useUser = (userId?: string) => {
 				throw new Error("User ID required");
 			}
 
+			const headers = await createAuthHeaders();
 			const response = await fetch(`${API_GATEWAY_URL}/api/v1/users/${userId}`, {
+				headers,
 				credentials: "include",
 			});
 

@@ -14,7 +14,7 @@ const FADE_IN_ANIMATION = { initial: { opacity: 0, y: 20 }, animate: { opacity: 
 function triggerBackgroundProductCrawl(organizationId: string, onboardingId: string, sourceType: string, sourceValue: string): void {
 	import("@/lib/auth-token").then(({ createAuthHeaders }) =>
 		createAuthHeaders().then((headers) =>
-			fetch(`${process.env.NEXT_PUBLIC_API_GATEWAY_URL}/api/v1/crawler-jobs`, {
+			fetch(`${process.env.NEXT_PUBLIC_API_GATEWAY_URL || "http://localhost:8000"}/api/v1/crawler-jobs`, {
 				method: "POST",
 				headers,
 				credentials: "include",
@@ -190,7 +190,7 @@ export default function ConnectProductsPage() {
 						isDisabled={false}
 						onChangeFeedUrl={handleChangeFeedUrl}
 					/>
-					<ConnectionReadyIndicator hasUrl={!!feedUrl.trim()} />
+					<ConnectionReadyIndicator hasUrl={!!feedUrl.trim() && !urlValidationError} />
 				</motion.div>
 				<NavigationButtons
 					isSubmitting={submitProducts.isPending || skipProducts.isPending}

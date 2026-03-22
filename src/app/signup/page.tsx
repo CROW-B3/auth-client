@@ -43,15 +43,16 @@ function SignUpContent() {
 				const invitation = JSON.parse(storedInvitation) as PendingInvitation;
 				setPendingInvitation(invitation);
 				setPrefillEmail(invitation.email);
+				return; // invitation email takes precedence
 			} catch {
 			}
 		}
 
 		const emailParam = searchParams.get("email");
-		if (emailParam && !prefillEmail) {
+		if (emailParam) {
 			setPrefillEmail(emailParam);
 		}
-	}, [searchParams, prefillEmail]);
+	}, [searchParams]);
 
 	const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
 		e.preventDefault();
@@ -98,10 +99,12 @@ function SignUpContent() {
 					}
 
 					const API_GATEWAY_URL = process.env.NEXT_PUBLIC_API_GATEWAY_URL || "http://localhost:8000";
+					const { createAuthHeaders } = await import("@/lib/auth-token");
+					const authHeaders = await createAuthHeaders();
 
 					const builderResponse = await fetch(`${API_GATEWAY_URL}/api/v1/users/user-builders`, {
 						method: "POST",
-						headers: { "Content-Type": "application/json" },
+						headers: authHeaders,
 						credentials: "include",
 						body: JSON.stringify({
 							betterAuthUserId: session.data.user.id,
@@ -118,7 +121,7 @@ function SignUpContent() {
 
 					const finalizeResponse = await fetch(`${API_GATEWAY_URL}/api/v1/users/user-builders/${builderData.id}/finalize`, {
 						method: "POST",
-						headers: { "Content-Type": "application/json" },
+						headers: authHeaders,
 						credentials: "include",
 						body: JSON.stringify({
 							email: validatedData.email,
@@ -142,6 +145,7 @@ function SignUpContent() {
 					return;
 				} catch {
 					toast.error("Account created but failed to join organization. Please contact support.");
+					return;
 				}
 			}
 
@@ -207,10 +211,15 @@ function SignUpContent() {
 	const handleGoogleSignup = async () => {
 		setErrors({});
 		setIsGoogleLoading(true);
-		await signIn.social({
-			provider: "google",
-			callbackURL: `${window.location.origin}/auth/callback`,
-		});
+		try {
+			await signIn.social({
+				provider: "google",
+				callbackURL: `${window.location.origin}/auth/callback`,
+			});
+		} catch {
+			toast.error("Failed to connect to Google. Please try again.");
+			setIsGoogleLoading(false);
+		}
 	};
 
 	return (
@@ -287,6 +296,7 @@ function SignUpContent() {
 							</motion.div>
 							<motion.div variants={{ hidden: { opacity: 0, y: 10 }, visible: { opacity: 1, y: 0 } }}>
 								<Input
+									key={prefillEmail}
 									id="email"
 									name="email"
 									type="email"
@@ -358,7 +368,7 @@ function SignUpContent() {
 								className="w-full bg-violet-600 hover:bg-violet-700 shadow-glow hover:shadow-glow-hover disabled:opacity-50 disabled:cursor-not-allowed"
 								showArrow={true}
 								arrowIcon={isSubmitting ? <LuLoader className="animate-spin" /> : <LuArrowRight />}
-								disabled={isSubmitting}
+								disabled={isSubmitting || isGoogleLoading}
 							>
 								{isSubmitting ? "Setting up" : "Continue"}
 							</Button>
@@ -389,7 +399,7 @@ function SignUpContent() {
 								type="button"
 								onClick={handleGoogleSignup}
 								showArrow={false}
-								disabled={isGoogleLoading}
+								disabled={isGoogleLoading || isSubmitting}
 								className="w-full border-white/10 hover:bg-white/5 hover:border-white/20 disabled:opacity-50 disabled:cursor-not-allowed"
 							>
 								<div className="flex items-center gap-2">

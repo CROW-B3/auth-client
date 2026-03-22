@@ -58,7 +58,8 @@ export default function ConnectCCTVPage() {
 			setConnectionStatus("cctv", "connected");
 
 			const savedStatus = localStorage.getItem("crow_connection_status");
-			const statusMap = savedStatus ? JSON.parse(savedStatus) : {};
+			let statusMap: Record<string, string> = {};
+			try { statusMap = savedStatus ? JSON.parse(savedStatus) : {}; } catch { /* ignore corrupt data */ }
 			statusMap.cctv = "connected";
 			localStorage.setItem("crow_connection_status", JSON.stringify(statusMap));
 

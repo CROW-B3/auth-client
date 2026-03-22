@@ -40,7 +40,7 @@ export const acceptInviteSchema = z.object({
 		.string()
 		.min(2, "Full name must be at least 2 characters")
 		.max(100, "Full name must be less than 100 characters")
-		.regex(/^[a-zA-Z\s'-]+$/, "Full name can only contain letters, spaces, hyphens, and apostrophes"),
+		.regex(/^[\p{L}\s'-]+$/u, "Full name can only contain letters, spaces, hyphens, and apostrophes"),
 	password: z
 		.string()
 		.min(8, "Password must be at least 8 characters")

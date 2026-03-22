@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, use } from "react";
+import { useEffect, useState, useRef, use } from "react";
 import { useRouter } from "next/navigation";
 import { AnimatedBackground, Navbar } from "@b3-crow/ui-kit";
 import { LuLoader } from "react-icons/lu";
@@ -11,8 +11,12 @@ export default function AcceptInviteByIdPage({ params }: { params: Promise<{ id:
 	const { id } = use(params);
 	const router = useRouter();
 	const [status, setStatus] = useState<"accepting" | "error">("accepting");
+	const hasRun = useRef(false);
 
 	useEffect(() => {
+		if (hasRun.current) return;
+		hasRun.current = true;
+
 		const acceptInvite = async () => {
 			try {
 				const session = await getSession();
@@ -41,7 +45,8 @@ export default function AcceptInviteByIdPage({ params }: { params: Promise<{ id:
 		};
 
 		void acceptInvite();
-	}, [id, router]);
+	// eslint-disable-next-line react-hooks/exhaustive-deps
+	}, [id]);
 
 	return (
 		<div className="min-h-screen flex flex-col antialiased selection:bg-violet-500/30 selection:text-violet-200 overflow-hidden relative">

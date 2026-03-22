@@ -38,8 +38,8 @@ export default function CheckoutCancelPage() {
 						<Button onClick={() => router.push("/choose-modules")} size="lg">
 							Try Again
 						</Button>
-						<Button variant="secondary" onClick={() => router.push("/organization")} size="lg">
-							Back to Onboarding
+						<Button variant="secondary" onClick={() => router.push("/choose-modules")} size="lg">
+							Change plan
 						</Button>
 					</div>
 				</motion.div>

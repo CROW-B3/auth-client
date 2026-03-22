@@ -9,12 +9,12 @@ export const productFeedUrlSchema = z.object({
 			(url) => {
 				try {
 					const parsed = new URL(url);
-					return parsed.protocol === "https:" || parsed.protocol === "http:";
+					return parsed.protocol === "https:";
 				} catch {
 					return false;
 				}
 			},
-			{ message: "URL must use HTTP or HTTPS protocol" }
+			{ message: "Only HTTPS URLs are accepted" }
 		),
 });
 

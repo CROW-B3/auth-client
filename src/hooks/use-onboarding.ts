@@ -1,6 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useOnboardingStore } from "@/stores/onboarding-store";
-import { createAuthHeaders } from "@/lib/auth-token";
+import { createAuthHeaders, handleAuthResponse } from "@/lib/auth-token";
 
 const API_GATEWAY_URL = process.env.NEXT_PUBLIC_API_GATEWAY_URL || "http://localhost:8000";
 
@@ -117,14 +117,18 @@ const onboardingApi = {
 			credentials: "include",
 			body: JSON.stringify({ betterAuthUserId }),
 		});
+		handleAuthResponse(response);
 		if (!response.ok) throw new Error("Failed to start onboarding");
 		return response.json();
 	},
 
 	getByUserId: async (userId: string): Promise<OnboardingRecord | null> => {
+		const headers = await createAuthHeaders();
 		const response = await fetch(`${API_GATEWAY_URL}/api/v1/auth/onboarding/user/${userId}`, {
+			headers,
 			credentials: "include",
 		});
+		handleAuthResponse(response);
 		if (response.status === 404) return null;
 		if (!response.ok) throw new Error("Failed to get onboarding");
 		const data = (await response.json()) as OnboardingApiResponse;
@@ -132,7 +136,9 @@ const onboardingApi = {
 	},
 
 	getById: async (onboardingId: string): Promise<OnboardingRecord | null> => {
+		const headers = await createAuthHeaders();
 		const response = await fetch(`${API_GATEWAY_URL}/api/v1/auth/onboarding/${onboardingId}`, {
+			headers,
 			credentials: "include",
 		});
 		if (response.status === 404) return null;
@@ -305,15 +311,17 @@ export const useStartOnboarding = () => {
 export const useOnboardingByUserId = (userId: string | undefined) => {
 	const { setOnboardingId } = useOnboardingStore();
 
-	return useQuery({
+	const query = useQuery({
 		queryKey: ["onboarding", "user", userId],
-		queryFn: () => onboardingApi.getByUserId(userId!),
-		enabled: !!userId,
-		select: (data) => {
+		queryFn: async () => {
+			const data = await onboardingApi.getByUserId(userId!);
 			if (data) setOnboardingId(data.id);
 			return data;
 		},
+		enabled: !!userId,
 	});
+
+	return query;
 };
 
 export const useSubmitOrganization = () => {
@@ -456,9 +464,12 @@ export const useCreateCheckoutSession = () => {
 
 const userApi = {
 	getByAuthId: async (betterAuthUserId: string): Promise<UserRecord | null> => {
+		const headers = await createAuthHeaders();
 		const response = await fetch(`${API_GATEWAY_URL}/api/v1/users/by-auth-id/${betterAuthUserId}`, {
+			headers,
 			credentials: "include",
 		});
+		handleAuthResponse(response);
 		if (response.status === 404 || response.status === 401) return null;
 		if (!response.ok) throw new Error("Failed to get user");
 		return response.json();

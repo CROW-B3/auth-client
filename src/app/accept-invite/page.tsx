@@ -21,7 +21,8 @@ function AcceptInviteContent() {
 			toast.error("Invalid invitation link");
 			router.push("/");
 		}
-	}, [organizationId, email, router]);
+	// eslint-disable-next-line react-hooks/exhaustive-deps
+	}, [organizationId, email]);
 
 	const handleAccept = () => {
 		setIsLoading(true);
@@ -34,7 +35,7 @@ function AcceptInviteContent() {
 	};
 
 	const handleDecline = () => {
-		toast.error("Invitation declined");
+		toast.success("Invitation declined");
 		router.push("/");
 	};
 

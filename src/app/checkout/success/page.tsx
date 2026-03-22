@@ -20,18 +20,21 @@ function CheckoutSuccessContent() {
 
 	useEffect(() => {
 		if (!sessionId) {
-			router.push('/choose-plan');
+			router.push('/choose-modules');
 			return;
 		}
 
 		if (!onboardingId || hasSubmitted.current) return;
 		hasSubmitted.current = true;
 
-		submitCheckout.mutate({
+		submitCheckout.mutateAsync({
 			onboardingId,
 			input: { stripeSessionId: sessionId },
+		}).catch(() => {
+			// Checkout was already paid — safe to proceed even if step submission fails
 		});
-	}, [sessionId, onboardingId, router, submitCheckout]);
+	// eslint-disable-next-line react-hooks/exhaustive-deps
+	}, [sessionId, onboardingId]);
 
 	const handleContinue = () => {
 		router.push('/connect-products');

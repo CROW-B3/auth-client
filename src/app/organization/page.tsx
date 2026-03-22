@@ -19,7 +19,7 @@ export default function CreateOrganizationPage() {
 	const [isSubmitting, setIsSubmitting] = useState(false);
 	const [isInitializing, setIsInitializing] = useState(true);
 
-	const { onboardingId, setOrganizationName, setBetterAuthOrgId } = useOnboardingStore();
+	const { onboardingId, pendingProfileName, setOrganizationName, setBetterAuthOrgId } = useOnboardingStore();
 	const startOnboarding = useStartOnboarding();
 
 	useEffect(() => {
@@ -49,7 +49,8 @@ export default function CreateOrganizationPage() {
 		};
 
 		initializeOnboarding();
-	}, [onboardingId, router, startOnboarding]);
+	// eslint-disable-next-line react-hooks/exhaustive-deps
+	}, [onboardingId]);
 
 	const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
 		e.preventDefault();
@@ -95,9 +96,11 @@ export default function CreateOrganizationPage() {
 				return;
 			}
 
+			const { createAuthHeaders } = await import("@/lib/auth-token");
+			const authHeaders = await createAuthHeaders();
 			const orgResponse = await fetch(`${API_GATEWAY_URL}/api/v1/auth/onboarding/${onboardingId}/step/organization`, {
 				method: "PATCH",
-				headers: { "Content-Type": "application/json" },
+				headers: authHeaders,
 				credentials: "include",
 				body: JSON.stringify({
 					betterAuthOrgId: org.id,
@@ -115,12 +118,22 @@ export default function CreateOrganizationPage() {
 				return;
 			}
 
+			if (pendingProfileName && pendingProfileName !== session.data.user.name) {
+				try {
+					const { authClient: client } = await import("@/lib/auth-client");
+					await client.updateUser({ name: pendingProfileName });
+				} catch {
+					// Non-blocking — name update can be done later
+				}
+			}
+
 			const pendingPicture = getPendingProfilePicture();
 			if (pendingPicture) {
 				try {
+					const token = (authHeaders as Record<string, string>).Authorization;
 					const userLookup = await fetch(
 						`${API_GATEWAY_URL}/api/v1/users/by-auth-id/${session.data.user.id}`,
-						{ credentials: "include" }
+						{ headers: authHeaders, credentials: "include" }
 					);
 					if (userLookup.ok) {
 						const userData = await userLookup.json() as { id: string };
@@ -128,17 +141,16 @@ export default function CreateOrganizationPage() {
 						uploadFormData.append("file", pendingPicture);
 						const uploadResponse = await fetch(`${API_GATEWAY_URL}/api/v1/users/${userData.id}/profile-picture`, {
 							method: "POST",
+							headers: token ? { Authorization: token } : {},
 							body: uploadFormData,
 							credentials: "include",
 						});
-						if (!uploadResponse.ok) {
-							console.error('Profile picture upload failed with status:', uploadResponse.status);
+						if (uploadResponse.ok) {
+							setPendingProfilePicture(null);
+						} else {
 							toast.error('Profile picture upload failed. You can update it later in settings.');
 						}
-					} else {
-						console.error('Failed to look up user for profile picture upload, status:', userLookup.status);
 					}
-					setPendingProfilePicture(null);
 				} catch (err) {
 					console.error('Failed to upload profile picture:', err);
 					// Don't block onboarding - just warn

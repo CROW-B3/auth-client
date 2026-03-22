@@ -1,20 +1,29 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { AnimatedBackground, Navbar, PageHeader, Button, PackageManagerSelector, type PackageManager, CodeBlock, ApiKeyInput } from "@b3-crow/ui-kit";
 import { motion } from "framer-motion";
 import toast from "react-hot-toast";
 import { WEB_SDK_INSTALL_COMMANDS, getWebSDKInitCode } from "@/lib/constants/web-sdk";
 import { apiKey as apiKeyClient } from "@/lib/auth-client";
+import { useOnboardingStore } from "@/stores/onboarding-store";
+import { useSubmitSource } from "@/hooks/use-onboarding";
 
 export default function ConnectWebPage() {
 	const router = useRouter();
 	const [packageManager, setPackageManager] = useState<PackageManager>("bun");
 	const [generatedApiKey, setGeneratedApiKey] = useState<string | null>(null);
 	const [isGenerating, setIsGenerating] = useState(false);
+	const [keyError, setKeyError] = useState(false);
+	const hasGenerated = useRef(false);
+	const { onboardingId, setConnectionStatus } = useOnboardingStore();
+	const submitSource = useSubmitSource();
 
 	useEffect(() => {
+		if (hasGenerated.current) return;
+		hasGenerated.current = true;
+
 		const generateKey = async () => {
 			setIsGenerating(true);
 			try {
@@ -23,12 +32,14 @@ export default function ConnectWebPage() {
 					expiresIn: 60 * 60 * 24 * 365,
 				});
 				if (error || !data) {
-					setGeneratedApiKey("crow_sk_demo_placeholder");
+					setKeyError(true);
+					toast.error("Failed to generate API key. You can generate one later in Settings.");
 					return;
 				}
 				setGeneratedApiKey(data.key);
 			} catch {
-				setGeneratedApiKey("crow_sk_demo_placeholder");
+				setKeyError(true);
+				toast.error("Failed to generate API key. You can generate one later in Settings.");
 			} finally {
 				setIsGenerating(false);
 			}
@@ -36,11 +47,22 @@ export default function ConnectWebPage() {
 		generateKey();
 	}, []);
 
-	const apiKey = generatedApiKey || "crow_sk_demo_placeholder";
+	const apiKey = generatedApiKey || (keyError ? "<key-generation-failed>" : "generating...");
 	const initCode = getWebSDKInitCode(apiKey);
 
-	const handleContinue = () => {
-		toast.success("Setup instructions saved!");
+	const handleContinue = async () => {
+		try {
+			if (onboardingId && generatedApiKey) {
+				await submitSource.mutateAsync({
+					onboardingId,
+					input: { sourceType: "web", apiKeyId: generatedApiKey },
+				});
+				setConnectionStatus("web", "connected");
+			}
+			toast.success("Web source connected!");
+		} catch {
+			// Non-blocking — connection can be completed later
+		}
 		router.push("/setup-components");
 	};
 

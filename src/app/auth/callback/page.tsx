@@ -14,7 +14,12 @@ const processPendingInvitation = async (
 	betterAuthUserId: string,
 	setStatus: (status: string) => void
 ): Promise<boolean> => {
-	const pendingInvitation = JSON.parse(pendingInvitationStr);
+	let pendingInvitation: { organizationId?: string; email?: string };
+	try {
+		pendingInvitation = JSON.parse(pendingInvitationStr);
+	} catch {
+		return false;
+	}
 	const { organizationId, email } = pendingInvitation;
 
 	if (!organizationId || !email) return false;
@@ -23,11 +28,14 @@ const processPendingInvitation = async (
 
 	const API_GATEWAY_URL = process.env.NEXT_PUBLIC_API_GATEWAY_URL || "http://localhost:8000";
 
+	const { createAuthHeaders } = await import("@/lib/auth-token");
+	const authHeaders = await createAuthHeaders();
+
 	const response = await fetch(
 		`${API_GATEWAY_URL}/api/v1/organizations/${organizationId}/members`,
 		{
 			method: "POST",
-			headers: { "Content-Type": "application/json" },
+			headers: authHeaders,
 			credentials: "include",
 			body: JSON.stringify({
 				email,
@@ -89,34 +97,24 @@ export default function AuthCallbackPage() {
 				setStatus("Checking account status...");
 
 				const API_GATEWAY_URL = process.env.NEXT_PUBLIC_API_GATEWAY_URL || "http://localhost:8000";
+				const { createAuthHeaders: getHeaders } = await import("@/lib/auth-token");
+				const userHeaders = await getHeaders();
 
 				const userResponse = await fetch(
 					`${API_GATEWAY_URL}/api/v1/users/by-auth-id/${session.data.user.id}`,
-					{ credentials: "include" }
+					{ headers: userHeaders, credentials: "include" }
 				);
 
 				if (!userResponse.ok) {
-					const isOAuth = session.data.user.image;
+					resetOnboarding();
 
-					if (isOAuth && session.data.user.image) {
-						setStatus("Setting up your profile...");
-						resetOnboarding();
-
-						try {
-							await fetch(session.data.user.image, {
-								mode: 'no-cors',
-								cache: 'no-cache'
-							});
-						} catch {
-						}
-
+					if (session.data.user.image) {
 						setStatus("Continuing your setup...");
 						router.push("/organization");
 						return;
 					}
 
 					setStatus("Please complete your profile...");
-					resetOnboarding();
 					router.push("/complete-profile");
 					return;
 				}
@@ -139,7 +137,8 @@ export default function AuthCallbackPage() {
 		};
 
 		handleCallback();
-	}, [router, determineAuthFlow]);
+	// eslint-disable-next-line react-hooks/exhaustive-deps
+	}, []);
 
 	return (
 		<div className="min-h-screen flex flex-col antialiased selection:bg-violet-500/30 selection:text-violet-200 overflow-x-hidden relative">

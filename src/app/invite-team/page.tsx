@@ -19,6 +19,7 @@ export default function InviteTeamPage() {
 	const router = useRouter();
 	const [emails, setEmails] = useState<string[]>([]);
 	const [isSubmitting, setIsSubmitting] = useState(false);
+	const [isCompleting, setIsCompleting] = useState(false);
 	const [chatEnabled, setChatEnabled] = useState(false);
 	const [chatComponents, setChatComponents] = useState<string[]>([]);
 	const [lookbackWindow, setLookbackWindow] = useState("1year");
@@ -130,7 +131,7 @@ export default function InviteTeamPage() {
 				validatedData.permissions
 			);
 
-			setPendingInvites([...pendingInvites, ...newInvites]);
+			setPendingInvites(prev => [...prev, ...newInvites]);
 
 			toast.success(`Invitations sent to ${emails.length} ${emails.length === 1 ? "person" : "people"}!`);
 
@@ -162,14 +163,17 @@ export default function InviteTeamPage() {
 			return;
 		}
 
+		setIsCompleting(true);
 		try {
 			const API_GATEWAY_URL = process.env.NEXT_PUBLIC_API_GATEWAY_URL || "http://localhost:8000";
+			const { createAuthHeaders } = await import("@/lib/auth-token");
+			const authHeaders = await createAuthHeaders();
 
 			await submitTeam.mutateAsync(onboardingId);
 
 			const onboardingResponse = await fetch(
 				`${API_GATEWAY_URL}/api/v1/auth/onboarding/${onboardingId}`,
-				{ credentials: "include" }
+				{ headers: authHeaders, credentials: "include" }
 			);
 
 			if (!onboardingResponse.ok) {
@@ -185,7 +189,7 @@ export default function InviteTeamPage() {
 						`${API_GATEWAY_URL}/api/v1/organizations/org-builders/${onboarding.orgBuilderId}/finalize`,
 						{
 							method: "POST",
-							headers: { "Content-Type": "application/json" },
+							headers: authHeaders,
 							credentials: "include",
 							body: JSON.stringify({}),
 						}
@@ -208,7 +212,7 @@ export default function InviteTeamPage() {
 							`${API_GATEWAY_URL}/api/v1/users/user-builders/${onboarding.userBuilderId}/finalize`,
 							{
 								method: "POST",
-								headers: { "Content-Type": "application/json" },
+								headers: authHeaders,
 								credentials: "include",
 								body: JSON.stringify({
 									email: userData.email,
@@ -231,6 +235,8 @@ export default function InviteTeamPage() {
 			router.push("/onboarding-complete");
 		} catch {
 			toast.error("Failed to complete onboarding. Please try again.");
+		} finally {
+			setIsCompleting(false);
 		}
 	};
 
@@ -261,7 +267,7 @@ export default function InviteTeamPage() {
 
 			if (result.success && result.sent > 0) {
 				toast.success(`Invitation resent to ${invite.email}!`);
-				setPendingInvites(updateInviteSentTime(pendingInvites, id));
+				setPendingInvites(prev => updateInviteSentTime(prev, id));
 			} else {
 				toast.error("Failed to resend invitation");
 			}
@@ -279,9 +285,11 @@ export default function InviteTeamPage() {
 
 		try {
 			const API_GATEWAY_URL = process.env.NEXT_PUBLIC_API_GATEWAY_URL || "http://localhost:8000";
+			const { createAuthHeaders } = await import("@/lib/auth-token");
+			const headers = await createAuthHeaders();
 			const res = await fetch(
 				`${API_GATEWAY_URL}/api/v1/auth/team-invitations/invitations/${encodeURIComponent(id)}`,
-				{ method: "DELETE", credentials: "include" }
+				{ method: "DELETE", headers, credentials: "include" }
 			);
 			if (!res.ok) {
 				toast.error(`Failed to revoke invitation for ${invite.email}`);
@@ -292,7 +300,7 @@ export default function InviteTeamPage() {
 			return;
 		}
 
-		setPendingInvites(removeInvite(pendingInvites, id));
+		setPendingInvites(prev => removeInvite(prev, id));
 		toast.success(`Invitation to ${invite.email} revoked`);
 	};
 
@@ -329,7 +337,7 @@ export default function InviteTeamPage() {
 							animate={{ opacity: 1, x: 0 }}
 							transition={{ duration: 0.5 }}
 						>
-							<form id="invite-form" onSubmit={handleSubmit} className="flex flex-col">
+							<form id="invite-form" onSubmit={handleSubmit} noValidate className="flex flex-col">
 								<div className="max-h-[500px] overflow-y-auto pr-2 space-y-5 [&::-webkit-scrollbar]:w-1 [&::-webkit-scrollbar-track]:bg-transparent [&::-webkit-scrollbar-thumb]:bg-white/10 [&::-webkit-scrollbar-thumb]:rounded-full hover:[&::-webkit-scrollbar-thumb]:bg-white/20">
 								<motion.div
 									initial={{ opacity: 0, y: 10 }}
@@ -459,7 +467,7 @@ export default function InviteTeamPage() {
 											<span
 												key={index}
 												className={`${
-													tag.startsWith("Chat:") || tag.startsWith("API keys:")
+													tag.startsWith("Chat:") || tag.startsWith("API key")
 														? "bg-violet-500/10 border-violet-500/20 text-violet-200"
 														: "bg-white/5 border-white/10 text-gray-300"
 												} border text-[10px] px-2 py-0.5 rounded font-medium`}
@@ -522,7 +530,7 @@ export default function InviteTeamPage() {
 									className="flex-1 bg-violet-600 hover:bg-violet-700 shadow-glow hover:shadow-glow-hover disabled:opacity-50 disabled:cursor-not-allowed"
 									showArrow={true}
 									arrowIcon={isSubmitting ? <LuLoader className="animate-spin" /> : <LuArrowRight />}
-									disabled={isSubmitting}
+									disabled={isSubmitting || isCompleting}
 								>
 									{isSubmitting ? "Sending" : "Send invites"}
 								</Button>
@@ -531,19 +539,21 @@ export default function InviteTeamPage() {
 									type="button"
 									onClick={handleSkip}
 									showArrow={false}
+									disabled={isSubmitting || isCompleting}
 									className="flex-1 border-white/10 hover:border-white/20"
 								>
-									Skip for now
+									{isCompleting ? "Completing..." : "Skip for now"}
 								</Button>
 								<Button
 									variant="outline"
 									type="button"
 									onClick={handleFinish}
 									showArrow={true}
-									arrowIcon={<LuArrowRight />}
+									arrowIcon={isCompleting ? <LuLoader className="animate-spin" /> : <LuArrowRight />}
+									disabled={isSubmitting || isCompleting}
 									className="flex-1 border-white/10 hover:border-white/20"
 								>
-									Finish setup
+									{isCompleting ? "Completing..." : "Finish setup"}
 								</Button>
 							</div>
 							<p className="text-[11px] text-gray-500 text-center">

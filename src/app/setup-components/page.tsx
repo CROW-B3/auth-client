@@ -62,10 +62,12 @@ export default function ConnectSourcesPage() {
 		if (onboardingId) {
 			try {
 				const apiUrl = process.env.NEXT_PUBLIC_API_GATEWAY_URL || "http://localhost:8000";
+				const { createAuthHeaders } = await import("@/lib/auth-token");
+				const headers = await createAuthHeaders();
 				await fetch(`${apiUrl}/api/v1/auth/onboarding/${onboardingId}/step/sources/skip`, {
 					method: "PATCH",
 					credentials: "include",
-					headers: { "Content-Type": "application/json" },
+					headers,
 				});
 			} catch {
 				// proceed anyway
@@ -79,7 +81,8 @@ export default function ConnectSourcesPage() {
 		if (dataLoaded && selectedSources.length === 0) {
 			router.push("/invite-team");
 		}
-	}, [dataLoaded, selectedSources, router]);
+	// eslint-disable-next-line react-hooks/exhaustive-deps
+	}, [dataLoaded, selectedSources.length]);
 
 	if (!dataLoaded || selectedSources.length === 0) {
 		return null;

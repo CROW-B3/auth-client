@@ -1,7 +1,7 @@
 "use client";
 
-import { useState } from "react";
-import { useRouter } from "next/navigation";
+import { useState, Suspense } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import { AnimatedBackground, Button, Divider, Input, Navbar, NavLink, PageHeader } from "@b3-crow/ui-kit";
 import { LuArrowRight, LuLoader } from "react-icons/lu";
 import { GrGoogle } from "react-icons/gr";
@@ -13,8 +13,10 @@ import { type FormErrors } from "@/types";
 import { signIn, getSession } from "@/lib/auth-client";
 import { useDetermineAuthFlow } from "@/hooks/use-onboarding";
 
-export default function LoginPage() {
+function LoginContent() {
 	const router = useRouter();
+	const searchParams = useSearchParams();
+	const redirectTo = searchParams.get("redirect");
 	const [errors, setErrors] = useState<FormErrors<SignInFormData>>({});
 	const [isSubmitting, setIsSubmitting] = useState(false);
 	const [isGoogleLoading, setIsGoogleLoading] = useState(false);
@@ -44,6 +46,11 @@ export default function LoginPage() {
 			const session = await getSession();
 			if (!session?.data?.user?.id) {
 				toast.error("Failed to get session");
+				return;
+			}
+
+			if (redirectTo && redirectTo.startsWith("/") && !redirectTo.startsWith("//")) {
+				router.push(redirectTo);
 				return;
 			}
 
@@ -80,10 +87,15 @@ export default function LoginPage() {
 	const handleGoogleLogin = async () => {
 		setErrors({});
 		setIsGoogleLoading(true);
-		await signIn.social({
-			provider: "google",
-			callbackURL: `${window.location.origin}/auth/callback`,
-		});
+		try {
+			await signIn.social({
+				provider: "google",
+				callbackURL: `${window.location.origin}/auth/callback`,
+			});
+		} catch {
+			toast.error("Failed to connect to Google. Please try again.");
+			setIsGoogleLoading(false);
+		}
 	};
 
 	return (
@@ -179,7 +191,7 @@ export default function LoginPage() {
 								className="w-full bg-violet-600 hover:bg-violet-700 shadow-glow hover:shadow-glow-hover disabled:opacity-50 disabled:cursor-not-allowed"
 								showArrow={true}
 								arrowIcon={isSubmitting ? <LuLoader className="animate-spin" /> : <LuArrowRight />}
-								disabled={isSubmitting}
+								disabled={isSubmitting || isGoogleLoading}
 							>
 								{isSubmitting ? "Signing in" : "Sign in"}
 							</Button>
@@ -210,7 +222,7 @@ export default function LoginPage() {
 								type="button"
 								onClick={handleGoogleLogin}
 								showArrow={false}
-								disabled={isGoogleLoading}
+								disabled={isGoogleLoading || isSubmitting}
 								className="w-full border-white/10 hover:bg-white/5 hover:border-white/20 disabled:opacity-50 disabled:cursor-not-allowed"
 							>
 								<div className="flex items-center gap-2">
@@ -225,5 +237,17 @@ export default function LoginPage() {
 
 			<div className="w-full py-4 text-center z-10 relative"></div>
 		</div>
+	);
+}
+
+export default function LoginPage() {
+	return (
+		<Suspense fallback={
+			<div className="min-h-screen flex items-center justify-center">
+				<LuLoader className="w-8 h-8 animate-spin text-violet-500" />
+			</div>
+		}>
+			<LoginContent />
+		</Suspense>
 	);
 }

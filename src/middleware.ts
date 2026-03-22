@@ -18,6 +18,8 @@ const ONBOARDING_ROUTES = [
 	{ path: "/organization", step: 1 },
 	{ path: "/choose-modules", step: 2 },
 	{ path: "/checkout", step: 3 },
+	{ path: "/checkout/success", step: 3 },
+	{ path: "/checkout/cancel", step: 3 },
 	{ path: "/connect-products", step: 4 },
 	{ path: "/setup-components", step: 5 },
 	{ path: "/invite-team", step: 6 },
@@ -78,7 +80,7 @@ async function fetchOnboardingStatusByUserId(userId: string, request: NextReques
 
 
 function isStaticOrApiRoute(pathname: string): boolean {
-	return pathname.startsWith("/api") || pathname.startsWith("/_next") || pathname.includes(".") || pathname.startsWith("/setup-components/");
+	return pathname.startsWith("/api") || pathname.startsWith("/_next") || pathname.includes(".");
 }
 
 function buildRedirectToLogin(request: NextRequest, pathname: string): NextResponse {
@@ -111,21 +113,17 @@ async function handleOnboardingRouteAccess(request: NextRequest, sessionUserId: 
 
 	const onboarding = await fetchOnboardingStatusByUserId(sessionUserId, request);
 
-	console.log(`[middleware:onboarding] path=${onboardingRoute.path} step=${onboardingRoute.step} userId=${sessionUserId} onboarding=${JSON.stringify(onboarding)}`);
-
 	if (!onboarding) {
-		console.log(`[middleware:onboarding] no-onboarding — allowing through (client-side guard handles access)`);
 		return NextResponse.next();
 	}
 	const onboardingStatus = (onboarding as { currentStep?: string; completedSteps?: string; status?: string }).status;
-	console.log(`[middleware:onboarding] status=${onboardingStatus} completedSteps=${onboarding.completedSteps}`);
 	if (onboardingStatus === "completed") {
 		return buildRedirectToDashboard();
 	}
 
-	const completedSteps = JSON.parse(onboarding.completedSteps || "[]");
+	let completedSteps: string[] = [];
+	try { completedSteps = JSON.parse(onboarding.completedSteps || "[]"); } catch { /* malformed data, treat as empty */ }
 	const redirectPath = resolveOnboardingRedirectPath(completedSteps, onboardingRoute.step);
-	console.log(`[middleware:onboarding] completedSteps=${JSON.stringify(completedSteps)} redirectPath=${redirectPath}`);
 
 	if (redirectPath) return buildRedirectToPath(request, redirectPath);
 
@@ -148,7 +146,8 @@ export async function middleware(request: NextRequest) {
 		return buildRedirectToLogin(request, pathname);
 	}
 
-	const matchedOnboardingRoute = ONBOARDING_ROUTES.find((route) => pathname === route.path);
+	const matchedOnboardingRoute = ONBOARDING_ROUTES.find((route) => pathname === route.path)
+		|| (pathname.startsWith("/setup-components/") ? ONBOARDING_ROUTES.find((r) => r.path === "/setup-components") : null);
 	if (matchedOnboardingRoute) return handleOnboardingRouteAccess(request, session.user.id, matchedOnboardingRoute);
 
 	return NextResponse.next();

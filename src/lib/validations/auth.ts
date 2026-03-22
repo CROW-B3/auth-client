@@ -9,7 +9,7 @@ const fullnameSchema = z
 	.string()
 	.min(2, "Full name must be at least 2 characters")
 	.max(100, "Full name must be less than 100 characters")
-	.regex(/^[a-zA-Z\s'-]+$/, "Full name can only contain letters, spaces, hyphens, and apostrophes");
+	.regex(/^[\p{L}\s'-]+$/u, "Full name can only contain letters, spaces, hyphens, and apostrophes");
 
 const passwordSchema = z
 	.string()
