@@ -167,9 +167,7 @@ export default function ConnectProductsPage() {
 		if (!onboardingId) { router.push("/setup-components"); return; }
 		try {
 			await skipProducts.mutateAsync(onboardingId);
-		} catch {
-			// ignore skip errors, proceed anyway
-		}
+		} catch {}
 		router.push("/setup-components");
 	};
 

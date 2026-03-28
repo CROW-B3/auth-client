@@ -30,9 +30,7 @@ function CheckoutSuccessContent() {
 		submitCheckout.mutateAsync({
 			onboardingId,
 			input: { stripeSessionId: sessionId },
-		}).catch(() => {
-			// Checkout was already paid — safe to proceed even if step submission fails
-		});
+		}).catch(() => {});
 	// eslint-disable-next-line react-hooks/exhaustive-deps
 	}, [sessionId, onboardingId]);
 

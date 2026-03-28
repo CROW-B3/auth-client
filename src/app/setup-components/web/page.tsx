@@ -60,9 +60,7 @@ export default function ConnectWebPage() {
 				setConnectionStatus("web", "connected");
 			}
 			toast.success("Web source connected!");
-		} catch {
-			// Non-blocking — connection can be completed later
-		}
+		} catch {}
 		router.push("/setup-components");
 	};
 

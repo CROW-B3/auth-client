@@ -69,11 +69,8 @@ export default function ConnectSourcesPage() {
 					credentials: "include",
 					headers,
 				});
-			} catch {
-				// proceed anyway
-			}
+			} catch {}
 		}
-		// Use hard navigation so middleware re-evaluates completedSteps from DB
 		window.location.href = "/invite-team";
 	};
 

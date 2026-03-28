@@ -122,9 +122,7 @@ export default function CreateOrganizationPage() {
 				try {
 					const { authClient: client } = await import("@/lib/auth-client");
 					await client.updateUser({ name: pendingProfileName });
-				} catch {
-					// Non-blocking — name update can be done later
-				}
+				} catch {}
 			}
 
 			const pendingPicture = getPendingProfilePicture();
@@ -153,7 +151,6 @@ export default function CreateOrganizationPage() {
 					}
 				} catch (err) {
 					console.error('Failed to upload profile picture:', err);
-					// Don't block onboarding - just warn
 					toast.error('Profile picture upload failed. You can update it later in settings.');
 				}
 			}

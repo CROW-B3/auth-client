@@ -43,7 +43,7 @@ function SignUpContent() {
 				const invitation = JSON.parse(storedInvitation) as PendingInvitation;
 				setPendingInvitation(invitation);
 				setPrefillEmail(invitation.email);
-				return; // invitation email takes precedence
+				return;
 			} catch {
 			}
 		}
@@ -64,7 +64,6 @@ function SignUpContent() {
 		const data = {
 			...formValues,
 			terms: formValues.terms === "on" ? "on" : "",
-			// Disabled inputs aren't submitted in FormData; use pendingInvitation.email when present
 			...(pendingInvitation ? { email: pendingInvitation.email } : {}),
 		};
 

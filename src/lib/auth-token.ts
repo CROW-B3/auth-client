@@ -9,7 +9,6 @@ export const getAuthToken = async (): Promise<string | null> => {
     return cachedToken;
   }
 
-  // Deduplicate concurrent token requests
   if (pendingTokenRequest) {
     return pendingTokenRequest;
   }

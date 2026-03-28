@@ -33,13 +33,29 @@ function LoginContent() {
 		try {
 			const validatedData = signInSchema.parse(formValues);
 
-			const { error } = await signIn.email({
-				email: validatedData.email,
-				password: validatedData.password,
-			});
+			let signInResult: { data: unknown; error: { message?: string; statusText?: string; code?: string } | null };
+			try {
+				signInResult = await signIn.email({
+					email: validatedData.email,
+					password: validatedData.password,
+				});
+			} catch (signInError) {
+				const msg = signInError instanceof Error ? signInError.message : "Invalid email or password";
+				toast.error(msg);
+				return;
+			}
 
-			if (error) {
-				toast.error(error.message || "Invalid email or password");
+			if (signInResult.error) {
+				toast.error(
+					signInResult.error.message
+					|| signInResult.error.statusText
+					|| "Invalid email or password"
+				);
+				return;
+			}
+
+			if (!signInResult.data) {
+				toast.error("Invalid email or password");
 				return;
 			}
 
