@@ -123,42 +123,19 @@ export default function CompleteProfilePage() {
 		setIsSubmitting(true);
 		setErrors({});
 
-		const formData = new FormData(e.currentTarget);
-		const formValues = Object.fromEntries(formData.entries());
-
-		try {
-			const validatedData = completeProfileSchema.parse(formValues);
-
-			setPendingProfileName(validatedData.name);
-
-			if (profilePicture) {
-				setPendingProfilePicture(profilePicture);
-			}
-
-			toast.success("Profile saved! Redirecting...");
-			setTimeout(() => {
-				window.location.href = "/organization";
-			}, 300);
-		} catch (error) {
-			if (error instanceof z.ZodError) {
-				const fieldErrors = error.flatten().fieldErrors;
-				const newErrors: FormErrors<CompleteProfileFormData> = {};
-
-				for (const [key, messages] of Object.entries(fieldErrors)) {
-					if (Array.isArray(messages) && messages.length > 0) {
-						const fieldName = key as keyof CompleteProfileFormData;
-						newErrors[fieldName] = messages[0];
-					}
-				}
-
-				setErrors(newErrors);
-				toast.error("Please fix the errors in the form");
-			} else {
-				toast.error("An unexpected error occurred. Please try again.");
-			}
-		} finally {
+		const nameValue = name.trim();
+		if (!nameValue || nameValue.length < 2) {
+			setErrors({ name: "Name must be at least 2 characters" });
 			setIsSubmitting(false);
+			return;
 		}
+
+		setPendingProfileName(nameValue);
+		if (profilePicture) {
+			setPendingProfilePicture(profilePicture);
+		}
+
+		window.location.href = "/organization";
 	};
 
 	if (isLoading) {
