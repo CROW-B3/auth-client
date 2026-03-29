@@ -156,7 +156,7 @@ export default function CreateOrganizationPage() {
 			}
 
 			toast.success("Organization created successfully!");
-			router.push("/choose-modules");
+			window.location.href = "/choose-modules";
 
 		} catch (error) {
 			if (error instanceof z.ZodError) {
