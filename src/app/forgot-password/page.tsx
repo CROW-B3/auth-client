@@ -27,9 +27,10 @@ export default function ForgotPasswordPage() {
 			const validatedData = forgotPasswordSchema.parse(formValues);
 
 			// eslint-disable-next-line @typescript-eslint/no-explicit-any
+			const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || window.location.origin;
 			const { error } = await (authClient as any).requestPasswordReset({
 				email: validatedData.email,
-				redirectTo: "/reset-password",
+				redirectTo: `${siteUrl}/reset-password`,
 			});
 
 			if (error) {
