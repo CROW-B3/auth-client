@@ -4,27 +4,17 @@ import { useState, useRef, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { AnimatedBackground, Button, Input, Navbar, NavLink, PageHeader, Footer } from "@b3-crow/ui-kit";
 import { LuArrowRight, LuLoader, LuUpload, LuX } from "react-icons/lu";
-import { z } from "zod";
 import { motion } from "framer-motion";
 import toast from "react-hot-toast";
 import { getSession } from "@/lib/auth-client";
 import { setPendingProfilePicture, useOnboardingStore } from "@/stores/onboarding-store";
 import Image from "next/image";
 
-const completeProfileSchema = z.object({
-	name: z
-		.string()
-		.min(2, "Name must be at least 2 characters")
-		.max(100, "Name must be less than 100 characters")
-		.regex(/^[\p{L}\s'-]+$/u, "Name can only contain letters, spaces, hyphens, and apostrophes"),
-});
-
-type CompleteProfileFormData = z.infer<typeof completeProfileSchema>;
-type FormErrors<T> = Partial<Record<keyof T, string>>;
+type FormErrors = Partial<Record<string, string>>;
 
 export default function CompleteProfilePage() {
 	const router = useRouter();
-	const [errors, setErrors] = useState<FormErrors<CompleteProfileFormData>>({});
+	const [errors, setErrors] = useState<FormErrors>({});
 	const [isSubmitting, setIsSubmitting] = useState(false);
 	const [isLoading, setIsLoading] = useState(true);
 	const [name, setName] = useState("");
