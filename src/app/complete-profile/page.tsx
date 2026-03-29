@@ -135,7 +135,10 @@ export default function CompleteProfilePage() {
 				setPendingProfilePicture(profilePicture);
 			}
 
-			window.location.href = "/organization";
+			toast.success("Profile saved! Redirecting...");
+			setTimeout(() => {
+				window.location.href = "/organization";
+			}, 300);
 		} catch (error) {
 			if (error instanceof z.ZodError) {
 				const fieldErrors = error.flatten().fieldErrors;
