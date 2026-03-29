@@ -135,7 +135,7 @@ export default function CompleteProfilePage() {
 				setPendingProfilePicture(profilePicture);
 			}
 
-			router.push("/organization");
+			window.location.href = "/organization";
 		} catch (error) {
 			if (error instanceof z.ZodError) {
 				const fieldErrors = error.flatten().fieldErrors;
