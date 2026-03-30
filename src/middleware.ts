@@ -95,19 +95,6 @@ function buildRedirectToDashboard(): NextResponse {
 	return NextResponse.redirect(new URL(dashboardUrl));
 }
 
-function buildRedirectToPath(request: NextRequest, targetPath: string): NextResponse {
-	const redirectUrl = request.nextUrl.clone();
-	redirectUrl.pathname = targetPath;
-	return NextResponse.redirect(redirectUrl);
-}
-
-function resolveOnboardingRedirectPath(completedSteps: string[], requestedStep: number): string | null {
-	if (completedSteps.length >= requestedStep) return null;
-
-	const targetRoute = ONBOARDING_ROUTES.find((route) => route.step === completedSteps.length);
-	return targetRoute?.path ?? null;
-}
-
 async function handleOnboardingRouteAccess(request: NextRequest, sessionUserId: string, onboardingRoute: typeof ONBOARDING_ROUTES[number]): Promise<NextResponse> {
 	if (onboardingRoute.path === "/complete-profile") return NextResponse.next();
 
@@ -120,12 +107,6 @@ async function handleOnboardingRouteAccess(request: NextRequest, sessionUserId: 
 	if (onboardingStatus === "completed") {
 		return buildRedirectToDashboard();
 	}
-
-	let completedSteps: string[] = [];
-	try { completedSteps = JSON.parse(onboarding.completedSteps || "[]"); } catch { /* malformed data, treat as empty */ }
-	const redirectPath = resolveOnboardingRedirectPath(completedSteps, onboardingRoute.step);
-
-	if (redirectPath) return buildRedirectToPath(request, redirectPath);
 
 	return NextResponse.next();
 }
