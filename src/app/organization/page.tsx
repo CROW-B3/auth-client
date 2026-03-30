@@ -89,31 +89,22 @@ export default function CreateOrganizationPage() {
 			setOrganizationName(validatedData.organizationName);
 			setBetterAuthOrgId(org.id);
 
-			if (!onboardingId) {
-				toast.error("Onboarding not initialized");
-				return;
-			}
-
 			const { createAuthHeaders } = await import("@/lib/auth-token");
 			const authHeaders = await createAuthHeaders();
-			const orgResponse = await fetch(`${API_GATEWAY_URL}/api/v1/auth/onboarding/${onboardingId}/step/organization`, {
-				method: "PATCH",
-				headers: authHeaders,
-				credentials: "include",
-				body: JSON.stringify({
-					betterAuthOrgId: org.id,
-					organizationName: validatedData.organizationName,
-					betterAuthUserId: session.data.user.id,
-				}),
-			});
 
-			if (!orgResponse.ok) {
-				const error = await orgResponse.json().catch(() => ({ error: "Unknown error" })) as { error: string | { message?: string } };
-				const errorMessage = typeof error.error === "string"
-					? error.error
-					: error.error?.message || "Failed to create organization";
-				toast.error(errorMessage);
-				return;
+			if (onboardingId) {
+				try {
+					await fetch(`${API_GATEWAY_URL}/api/v1/auth/onboarding/${onboardingId}/step/organization`, {
+						method: "PATCH",
+						headers: authHeaders,
+						credentials: "include",
+						body: JSON.stringify({
+							betterAuthOrgId: org.id,
+							organizationName: validatedData.organizationName,
+							betterAuthUserId: session.data.user.id,
+						}),
+					});
+				} catch {}
 			}
 
 			if (pendingProfileName && pendingProfileName !== session.data.user.name) {
@@ -121,36 +112,6 @@ export default function CreateOrganizationPage() {
 					const { authClient: client } = await import("@/lib/auth-client");
 					await client.updateUser({ name: pendingProfileName });
 				} catch {}
-			}
-
-			const pendingPicture = getPendingProfilePicture();
-			if (pendingPicture) {
-				try {
-					const token = (authHeaders as Record<string, string>).Authorization;
-					const userLookup = await fetch(
-						`${API_GATEWAY_URL}/api/v1/users/by-auth-id/${session.data.user.id}`,
-						{ headers: authHeaders, credentials: "include" }
-					);
-					if (userLookup.ok) {
-						const userData = await userLookup.json() as { id: string };
-						const uploadFormData = new FormData();
-						uploadFormData.append("file", pendingPicture);
-						const uploadResponse = await fetch(`${API_GATEWAY_URL}/api/v1/users/${userData.id}/profile-picture`, {
-							method: "POST",
-							headers: token ? { Authorization: token } : {},
-							body: uploadFormData,
-							credentials: "include",
-						});
-						if (uploadResponse.ok) {
-							setPendingProfilePicture(null);
-						} else {
-							toast.error('Profile picture upload failed. You can update it later in settings.');
-						}
-					}
-				} catch (err) {
-					console.error('Failed to upload profile picture:', err);
-					toast.error('Profile picture upload failed. You can update it later in settings.');
-				}
 			}
 
 			toast.success("Organization created successfully!");
@@ -251,16 +212,14 @@ export default function CreateOrganizationPage() {
 							animate={{ opacity: 1, y: 0 }}
 							transition={{ duration: 0.5, delay: 0.8 }}
 						>
-							<Button
-								variant="solid"
+							<button
 								type="submit"
-								className="w-full bg-violet-600 hover:bg-violet-700 shadow-glow hover:shadow-glow-hover disabled:opacity-50 disabled:cursor-not-allowed mt-2"
-								showArrow={true}
-								arrowIcon={isSubmitting ? <LuLoader className="animate-spin" /> : <LuArrowRight />}
+								className="rounded-full transition-all font-medium flex items-center justify-center gap-2 whitespace-nowrap text-white px-4 py-2.5 text-sm w-full bg-violet-600 hover:bg-violet-700 shadow-glow hover:shadow-glow-hover disabled:opacity-50 disabled:cursor-not-allowed mt-2"
 								disabled={isSubmitting}
 							>
 								{isSubmitting ? "Creating" : "Create organization"}
-							</Button>
+								{isSubmitting ? <LuLoader className="animate-spin" /> : <LuArrowRight />}
+							</button>
 						</motion.div>
 
 					</motion.form>
