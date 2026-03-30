@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect, useState, useRef } from "react";
-import { useRouter } from "next/navigation";
 import { AnimatedBackground } from "@b3-crow/ui-kit";
 import { LuLoader } from "react-icons/lu";
 import toast from "react-hot-toast";
@@ -59,7 +58,6 @@ const processPendingInvitation = async (
 };
 
 export default function AuthCallbackPage() {
-	const router = useRouter();
 	const [status, setStatus] = useState("Verifying your account...");
 	const determineAuthFlow = useDetermineAuthFlow();
 	const resetOnboarding = useOnboardingStore((s) => s.reset);
@@ -75,7 +73,7 @@ export default function AuthCallbackPage() {
 
 				if (!session?.data?.user?.id) {
 					toast.error("Authentication failed. Please try again.");
-					router.push("/login");
+					window.location.href = "/login";
 					return;
 				}
 
@@ -110,12 +108,12 @@ export default function AuthCallbackPage() {
 
 					if (session.data.user.image) {
 						setStatus("Continuing your setup...");
-						router.push("/organization");
+						window.location.href = "/organization";
 						return;
 					}
 
 					setStatus("Please complete your profile...");
-					router.push("/complete-profile");
+					window.location.href = "/complete-profile";
 					return;
 				}
 
@@ -129,10 +127,10 @@ export default function AuthCallbackPage() {
 				}
 
 				setStatus("Continuing your setup...");
-				router.push(result.targetRoute || "/organization");
+				window.location.href = result.targetRoute || "/organization";
 			} catch {
 				toast.error("Something went wrong. Please try again.");
-				router.push("/login");
+				window.location.href = "/login";
 			}
 		};
 

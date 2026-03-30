@@ -1,7 +1,6 @@
 "use client";
 
 import { useState, useRef, useEffect } from "react";
-import { useRouter } from "next/navigation";
 import { AnimatedBackground, Button, Input, Navbar, NavLink, PageHeader, Footer } from "@b3-crow/ui-kit";
 import { LuArrowRight, LuLoader, LuUpload, LuX } from "react-icons/lu";
 import { motion } from "framer-motion";
@@ -13,7 +12,6 @@ import Image from "next/image";
 type FormErrors = Partial<Record<string, string>>;
 
 export default function CompleteProfilePage() {
-	const router = useRouter();
 	const [errors, setErrors] = useState<FormErrors>({});
 	const [isSubmitting, setIsSubmitting] = useState(false);
 	const [isLoading, setIsLoading] = useState(true);
@@ -29,7 +27,7 @@ export default function CompleteProfilePage() {
 				const session = await getSession();
 				if (!session?.data?.user) {
 					toast.error("Session expired. Please sign in again.");
-					router.push("/login");
+					window.location.href = "/login";
 					return;
 				}
 
@@ -37,12 +35,12 @@ export default function CompleteProfilePage() {
 				setIsLoading(false);
 			} catch {
 				toast.error("Failed to load profile. Please try again.");
-				router.push("/login");
+				window.location.href = "/login";
 			}
 		};
 
 		checkSession();
-	}, [router]);
+	}, []);
 
 	useEffect(() => {
 		return () => {

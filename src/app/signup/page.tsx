@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, Suspense } from "react";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useSearchParams } from "next/navigation";
 import { AnimatedBackground, Button, Checkbox, Divider, Input, Navbar, NavLink, PageHeader } from "@b3-crow/ui-kit";
 import { LuArrowRight, LuLoader } from "react-icons/lu";
 import { GrGoogle } from "react-icons/gr";
@@ -29,7 +29,6 @@ interface PendingInvitation {
 }
 
 function SignUpContent() {
-	const router = useRouter();
 	const searchParams = useSearchParams();
 	const [errors, setErrors] = useState<FormErrors<SignUpFormData>>({});
 	const [isSubmitting, setIsSubmitting] = useState(false);
@@ -79,7 +78,7 @@ function SignUpContent() {
 			if (error) {
 				if (isUserAlreadyExistsError(error)) {
 					toast.error("An account with this email already exists. Please sign in instead.");
-					router.push("/login");
+					window.location.href = "/login";
 					return;
 				}
 				if (isDomainNotAllowedError(error)) {

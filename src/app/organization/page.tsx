@@ -1,7 +1,6 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { useRouter } from "next/navigation";
 import { AnimatedBackground, Button, Input, Navbar, NavLink, PageHeader, Footer } from "@b3-crow/ui-kit";
 import { LuArrowRight, LuLoader } from "react-icons/lu";
 import { z } from "zod";
@@ -14,7 +13,6 @@ import { useOnboardingStore, getPendingProfilePicture, setPendingProfilePicture 
 import { useStartOnboarding } from "@/hooks/use-onboarding";
 
 export default function CreateOrganizationPage() {
-	const router = useRouter();
 	const [errors, setErrors] = useState<FormErrors<CreateOrganizationFormData>>({});
 	const [isSubmitting, setIsSubmitting] = useState(false);
 	const [isInitializing, setIsInitializing] = useState(true);
@@ -31,20 +29,20 @@ export default function CreateOrganizationPage() {
 		const initializeOnboarding = async () => {
 			const session = await getSession();
 			if (!session?.data?.user?.id) {
-				router.push("/signup");
+				window.location.href = "/signup";
 				return;
 			}
 
 			try {
 				const result = await startOnboarding.mutateAsync(session.data.user.id);
 				if (result.redirect) {
-					router.push(result.redirect);
+					window.location.href = result.redirect;
 					return;
 				}
 				setIsInitializing(false);
 			} catch {
 				toast.error("Failed to initialize onboarding");
-				router.push("/signup");
+				window.location.href = "/signup";
 			}
 		};
 
@@ -66,7 +64,7 @@ export default function CreateOrganizationPage() {
 			const session = await getSession();
 			if (!session?.data?.user?.id) {
 				toast.error("Session expired. Please sign in again.");
-				router.push("/signup");
+				window.location.href = "/signup";
 				return;
 			}
 
