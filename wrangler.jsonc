@@ -4,57 +4,11 @@
   "account_id": "8f0203259905d8923687286c84921e6c",
   "main": ".open-next/worker.js",
   "compatibility_date": "2025-03-01",
-  "compatibility_flags": ["nodejs_compat", "global_fetch_strictly_public"],
-  "assets": {
-    "binding": "ASSETS",
-    "directory": ".open-next/assets",
-  },
-  "logpush": true,
-  "observability": {
-    "enabled": true,
-  },
-  "vars": {
-    "ENVIRONMENT": "prod",
-    "NEXT_PUBLIC_SITE_URL": "https://auth.crowai.dev",
-    "NEXT_PUBLIC_AUTH_URL": "https://api.crowai.dev",
-    "NEXT_PUBLIC_API_GATEWAY_URL": "https://api.crowai.dev",
-    "NEXT_PUBLIC_DASHBOARD_URL": "https://app.crowai.dev",
-    "NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY": "pk_test_51SpAH5FhHtHJYxSlKyZHAAJ3tsGNywysGeJphbGGax6vDHkF3EX1DwLRsK8HLYTYJfY62dm3WEeSkZTDyhsDr8LJ00LD4Vi7GP",
-    "GOOGLE_CLIENT_ID": "293027116306-htkacq5rg045gatdks45h21vdbsae18r.apps.googleusercontent.com",
-    "GOOGLE_PROJECT_ID": "radiant-galaxy-484216-h4",
-  },
-  "routes": [
-    { "pattern": "auth.crowai.dev", "custom_domain": true }
+  "compatibility_flags": [
+    "nodejs_compat",
+    "global_fetch_strictly_public"
   ],
-  "env": {
-    "dev": {
-      "vars": {
-        "ENVIRONMENT": "dev",
-        "NEXT_PUBLIC_SITE_URL": "https://dev.auth.crowai.dev",
-        "NEXT_PUBLIC_AUTH_URL": "https://dev.api.crowai.dev",
-        "NEXT_PUBLIC_API_GATEWAY_URL": "https://dev.api.crowai.dev",
-        "NEXT_PUBLIC_DASHBOARD_URL": "https://dev.app.crowai.dev",
-        "NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY": "pk_test_51SpAH5FhHtHJYxSlKyZHAAJ3tsGNywysGeJphbGGax6vDHkF3EX1DwLRsK8HLYTYJfY62dm3WEeSkZTDyhsDr8LJ00LD4Vi7GP",
-        "GOOGLE_CLIENT_ID": "293027116306-htkacq5rg045gatdks45h21vdbsae18r.apps.googleusercontent.com",
-        "GOOGLE_CLIENT_SECRET": "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",
-        "GOOGLE_PROJECT_ID": "radiant-galaxy-484216-h4",
-        "STRIPE_SECRET_KEY": "sk_test_51SpAH5FhHtHJYxSl7WgkgCQYGXGhJvs2Cm6fCW93rJLaAOrZbvbdBlAiCq3ciVy4PBZOrAHeEbYyJIFdjFMyyLfw00Rvtm2C2e",
-      },
-      "routes": [
-        { "pattern": "dev.auth.crowai.dev", "custom_domain": true }
-      ],
-      "name": "crow-auth-client-dev",
-    },
-    "local": {
-      "vars": {
-        "ENVIRONMENT": "local",
-        "NEXT_PUBLIC_SITE_URL": "http://localhost:3001",
-        "NEXT_PUBLIC_AUTH_URL": "http://localhost:8000",
-        "NEXT_PUBLIC_API_GATEWAY_URL": "http://localhost:8000",
-        "NEXT_PUBLIC_DASHBOARD_URL": "http://localhost:3002",
-        "NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY": "pk_test_51SpAH5FhHtHJYxSlKyZHAAJ3tsGNywysGeJphbGGax6vDHkF3EX1DwLRsK8HLYTYJfY62dm3WEeSkZTDyhsDr8LJ00LD4Vi7GP",
-      },
-    },
-  },
-  "placement": { "mode": "smart" },
+  "observability": {
+    "enabled": true
+  }
 }
